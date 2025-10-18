@@ -119,6 +119,7 @@ const state = {
   hostPlayerId: null,
   hostPlayerName: "",
   hostPlayerPin: "",
+  hostPlayer: null,
   activeView: "setup",
   activeTab: "progress",
   chatInterval: null,
@@ -128,7 +129,8 @@ const state = {
   stageAutoAdvancing: false,
   chatSessionCode: null,
   chatIdentity: null,
-  isAssigningRoles: false
+  isAssigningRoles: false,
+  readyInFlight: false
 };
 
 const HOST_STORAGE_KEY = "crimeSceneHostSession";
@@ -366,6 +368,13 @@ const dom = {
   gameScenarioTimeline: document.getElementById("gameScenarioTimeline"),
   gameEvidencePhysical: document.getElementById("gameEvidencePhysical"),
   gameEvidenceDigital: document.getElementById("gameEvidenceDigital"),
+  hostProfileNotice: document.getElementById("hostProfileNotice"),
+  hostProfileTimeline: document.getElementById("hostProfileTimeline"),
+  hostProfileEvidence: document.getElementById("hostProfileEvidence"),
+  hostProfileAlibis: document.getElementById("hostProfileAlibis"),
+  hostReadyToolbar: document.getElementById("hostReadyToolbar"),
+  hostReadyStatus: document.getElementById("hostReadyStatus"),
+  hostReadyToggleBtn: document.getElementById("hostReadyToggleBtn"),
   tabButtons: document.querySelectorAll(".tab-nav__btn"),
   tabPanels: document.querySelectorAll(".tab-panel"),
   toast: document.getElementById("toast")
@@ -389,6 +398,110 @@ function showToast(message, variant = "info") {
       dom.toast.close();
     }
   }, 2600);
+}
+
+function updateHostReadyUI() {
+  if (!dom.hostReadyStatus || !dom.hostReadyToggleBtn) return;
+  dom.hostReadyStatus.removeAttribute("title");
+  if (!state.activeSession || !state.hostPlayer) {
+    dom.hostReadyStatus.textContent = "투표 대기";
+    dom.hostReadyStatus.dataset.state = "idle";
+    dom.hostReadyToggleBtn.disabled = true;
+    dom.hostReadyToggleBtn.textContent = "턴 끝내기";
+    return;
+  }
+  const stage = state.activeSession.stage;
+  const readyEligible = isReadyVoteStage(stage);
+  if (!readyEligible) {
+    const label = stage === "lobby" ? "대기 중" : "투표 불가";
+    dom.hostReadyStatus.textContent = label;
+    dom.hostReadyStatus.dataset.state = "disabled";
+    dom.hostReadyToggleBtn.disabled = true;
+    dom.hostReadyToggleBtn.textContent = "턴 끝내기";
+    return;
+  }
+  const isReady = Boolean(state.hostPlayer.stage_ready && state.hostPlayer.ready_stage === stage);
+  const roster = state.players || [];
+  const eligiblePlayers = roster.filter((player) => !player.is_bot).length;
+  const readyPlayers = roster.filter(
+    (player) => !player.is_bot && player.stage_ready && player.ready_stage === stage
+  ).length;
+  const requiredCount = getReadyVoteRequirement(eligiblePlayers);
+  const progressText = eligiblePlayers > 0 ? `${readyPlayers} / ${eligiblePlayers}` : "0 / 0";
+  if (requiredCount > 0) {
+    dom.hostReadyStatus.title = `최소 ${requiredCount}명이 동의하면 다음 단계로 이동합니다.`;
+  }
+  dom.hostReadyStatus.textContent = isReady
+    ? `투표 완료 (${progressText})`
+    : `투표 대기 (${progressText})`;
+  dom.hostReadyStatus.dataset.state = isReady ? "ready" : "waiting";
+  dom.hostReadyToggleBtn.disabled = state.readyInFlight;
+  dom.hostReadyToggleBtn.textContent = isReady ? "투표 취소" : "턴 끝내기";
+}
+
+async function handleHostReadyToggle() {
+  if (!state.activeSession || !state.hostPlayer || !state.hostPlayerId) {
+    showToast("세션에 먼저 접속해 주세요.", "warn");
+    return;
+  }
+  const stage = state.activeSession.stage;
+  if (!isReadyVoteStage(stage)) {
+    showToast("현재 단계에서는 턴 끝내기 투표를 할 수 없습니다.", "info");
+    return;
+  }
+  if (state.readyInFlight) return;
+  const shouldMarkReady = !(state.hostPlayer.stage_ready && state.hostPlayer.ready_stage === stage);
+  state.readyInFlight = true;
+  updateHostReadyUI();
+  try {
+    const updated = await api.update("players", state.hostPlayerId, {
+      stage_ready: shouldMarkReady,
+      ready_stage: stage,
+      last_seen: new Date().toISOString()
+    });
+    state.hostPlayer = updated;
+    updateHostReadyUI();
+    await loadPlayers();
+    showToast(
+      shouldMarkReady
+        ? "턴 끝내기 투표에 참여했습니다."
+        : "턴 끝내기 투표를 취소했습니다.",
+      shouldMarkReady ? "success" : "info"
+    );
+  } catch (error) {
+    console.error("ready toggle failed", error);
+    showToast("턴 끝내기 투표 상태를 업데이트하지 못했습니다.", "error");
+  } finally {
+    state.readyInFlight = false;
+    updateHostReadyUI();
+  }
+}
+
+function renderHostPersonalProfile(profile) {
+  if (dom.hostProfileNotice) {
+    dom.hostProfileNotice.textContent = profile
+      ? `${profile.personaTitle ? `${profile.personaTitle} · ` : ""}${profile.personaName} 시점에서 정리된 개인 정보입니다.`
+      : "역할이 확정되면 개인 정보가 표시됩니다.";
+  }
+  renderListWithFallback(dom.hostProfileTimeline, profile?.timeline || [], "타임라인 정보가 준비되지 않았습니다.");
+  renderListWithFallback(dom.hostProfileEvidence, profile?.evidence || [], "나에 대한 특이 증거가 아직 보고되지 않았습니다.");
+  renderListWithFallback(dom.hostProfileAlibis, profile?.alibis || [], "추천 변명이 준비되는 중입니다.");
+}
+
+function renderListWithFallback(element, items = [], fallbackMessage) {
+  if (!element) return;
+  element.innerHTML = "";
+  if (!items.length) {
+    const li = document.createElement("li");
+    li.textContent = fallbackMessage;
+    element.appendChild(li);
+    return;
+  }
+  items.forEach((item) => {
+    const li = document.createElement("li");
+    li.textContent = item;
+    element.appendChild(li);
+  });
 }
 
 function renderList(element, items = []) {
@@ -1440,6 +1553,32 @@ async function assignRoles() {
     });
     state.activeSession = updatedSession;
     loadPlayers();
+
+    // 봇 채팅 메시지 추가
+    const botPlayers = state.players.filter(player => player.is_bot);
+    for (const bot of botPlayers) {
+      const cluePackage = parseCluePackage(bot.clue_summary);
+      if (!cluePackage) continue;
+
+      let message = "";
+      if (bot.role === "탐정") {
+        message = `나는 탐정이고, ${cluePackage.briefing || "수사를 시작합니다"}`;
+      } else if (bot.role === "범인") {
+        message = `나는 범인이고, ${cluePackage.briefing || "계획을 실행합니다"}`;
+      } else if (bot.role === "용의자") {
+        message = `나는 용의자이고, ${cluePackage.briefing || "알리바이를 준비합니다"}`;
+      }
+
+      if (message) {
+        await api.create("chat_messages", {
+          session_code: state.activeSession.code,
+          player_name: bot.name,
+          role: bot.role,
+          message,
+          sent_at: new Date().toISOString()
+        });
+      }
+    }
   } catch (error) {
     console.error(error);
     showToast("역할 배정 중 오류가 발생했습니다.", "error");
@@ -1754,11 +1893,13 @@ async function loadPlayers() {
     if (hostPlayer) {
       state.hostPlayerId = hostPlayer.id;
       state.hostPlayerName = hostPlayer.name;
+      state.hostPlayer = hostPlayer;
       if (!state.hostPlayerPin && hostPlayer.pin) {
         state.hostPlayerPin = hostPlayer.pin;
       }
       renderHostRoleView(hostPlayer);
     } else {
+      state.hostPlayer = null;
       renderHostRoleView(null);
     }
     updateSessionResultDisplay();
@@ -1768,6 +1909,7 @@ async function loadPlayers() {
     await checkAndHandleStageReadyAdvance();
     updatePlayerStats();
     updateVoteStatus();
+    updateHostReadyUI();
     if (state.sessionRecordId) {
       try {
         const updated = await api.update("sessions", state.sessionRecordId, {
@@ -1874,6 +2016,174 @@ function parseCluePackage(raw) {
   }
 }
 
+function flattenScenarioPersonas(scenario) {
+  if (!scenario?.roles) return [];
+  const personas = [];
+  const { detective = [], culprit = [], suspects = [] } = scenario.roles;
+  detective.forEach((persona) => {
+    personas.push({ data: persona, type: "detective", label: "탐정" });
+  });
+  culprit.forEach((persona) => {
+    personas.push({ data: persona, type: "culprit", label: "범인" });
+  });
+  suspects.forEach((persona) => {
+    personas.push({ data: persona, type: "suspect", label: "용의자" });
+  });
+  return personas;
+}
+
+function gatherPersonaLines(persona) {
+  const results = [];
+  const pushLines = (items, label) => {
+    (items || []).forEach((item) => {
+      if (typeof item !== "string") return;
+      const trimmed = item.trim();
+      if (!trimmed) return;
+      results.push({ text: trimmed, label });
+    });
+  };
+  pushLines(persona?.truths, "진실");
+  pushLines(persona?.misdirections, "혼선");
+  pushLines(persona?.prompts, "프롬프트");
+  pushLines(persona?.exposed, "노출 위험");
+  if (persona?.master) {
+    pushLines(persona.master.truths, "비밀 진실");
+    pushLines(persona.master.exposed, "폭로 경고");
+  }
+  return results;
+}
+
+function buildPersonalProfile(player, cluePackage) {
+  if (!player || !cluePackage || !state.activeScenario) {
+    return null;
+  }
+
+  const scenario = state.activeScenario;
+  const characterParts = (player.character || "").split(" · ");
+  const personaName = (cluePackage.persona?.name || characterParts[0] || player.name || "").trim();
+  const personaTitle = (cluePackage.persona?.title || characterParts[1] || "").trim();
+  const personas = flattenScenarioPersonas(scenario);
+  const selfEntry = personas.find((entry) => entry.data.name === personaName) || null;
+
+  const timelineSet = new Set();
+  const addLines = (lines) => {
+    (lines || []).forEach((line) => {
+      if (typeof line !== "string") return;
+      const trimmed = line.trim();
+      if (!trimmed) return;
+      timelineSet.add(trimmed);
+    });
+  };
+
+  if (cluePackage.briefing) {
+    addLines([cluePackage.briefing]);
+  }
+  if (selfEntry?.data?.briefing) {
+    addLines([selfEntry.data.briefing]);
+  }
+  addLines(selfEntry?.data?.truths);
+  addLines(selfEntry?.data?.timeline);
+  if (cluePackage.master?.truths) {
+    addLines(cluePackage.master.truths);
+  }
+  (cluePackage.rounds || []).forEach((round) => {
+    addLines(round.truths);
+  });
+  const timeline = Array.from(timelineSet);
+
+  const evidenceEntries = [];
+  const addEvidenceEntry = (display, detail) => {
+    if (!display) return;
+    if (evidenceEntries.some((entry) => entry.display === display)) return;
+    evidenceEntries.push({ display, detail });
+  };
+
+  const tokens = new Set();
+  if (personaName) tokens.add(personaName.toLowerCase());
+  if (personaTitle) tokens.add(personaTitle.toLowerCase());
+  if (player.name) tokens.add(player.name.toLowerCase());
+
+  const matchesTarget = (text = "") => {
+    const lower = text.toLowerCase();
+    for (const token of tokens) {
+      if (token && lower.includes(token)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  personas.forEach((entry) => {
+    if (entry.data.name === personaName) {
+      return;
+    }
+    const lines = gatherPersonaLines(entry.data);
+    lines.forEach(({ text, label }) => {
+      if (matchesTarget(text)) {
+        const display = `${entry.data.name} (${entry.label}) · ${label}: ${text}`;
+        addEvidenceEntry(display, text);
+      }
+    });
+  });
+
+  const scenarioEvidence = [
+    ...(scenario.evidence?.physical || []),
+    ...(scenario.evidence?.digital || [])
+  ];
+  scenarioEvidence.forEach((item) => {
+    if (matchesTarget(item)) {
+      addEvidenceEntry(`공용 증거: ${item}`, item);
+    }
+  });
+
+  const evidence = evidenceEntries.map((entry) => entry.display);
+
+  const alibiSet = new Set();
+  const addAlibiLines = (lines) => {
+    (lines || []).forEach((line) => {
+      if (typeof line !== "string") return;
+      const trimmed = line.trim();
+      if (!trimmed) return;
+      alibiSet.add(trimmed);
+    });
+  };
+
+  addAlibiLines(selfEntry?.data?.misdirections);
+  (cluePackage.rounds || []).forEach((round) => {
+    addAlibiLines(round.misdirections);
+  });
+
+  const detailSet = new Set(
+    evidenceEntries
+      .map((entry) => entry.detail)
+      .filter((detail) => typeof detail === "string" && detail.trim())
+  );
+
+  let addedCounter = 0;
+  detailSet.forEach((detail) => {
+    if (addedCounter >= 3) {
+      return;
+    }
+    const trimmed = detail.length > 80 ? `${detail.slice(0, 77)}...` : detail;
+    alibiSet.add(`"${trimmed}" 라는 의심에는 상황은 인정하되 사건과 무관함을 강조하세요. 예) "맞아요, 그런 일이 있었지만 범행과는 아무 관련이 없어요."`);
+    addedCounter += 1;
+  });
+
+  if (!alibiSet.size) {
+    alibiSet.add("행동의 이유를 침착하게 설명하고, 당시 알리바이나 증인을 준비해 두라고 팀에 공유하세요.");
+  }
+
+  const profile = {
+    personaName,
+    personaTitle,
+    timeline,
+    evidence,
+    alibis: Array.from(alibiSet)
+  };
+
+  return profile;
+}
+
 function createClueList(items = [], modifier = "") {
   const list = document.createElement("ul");
   list.className = `clue-list ${modifier}`.trim();
@@ -1889,6 +2199,54 @@ function createClueList(items = [], modifier = "") {
     list.appendChild(li);
   });
   return list;
+}
+
+function renderHostPersonalProfile() {
+  const profile = buildPersonalProfile(state.self, state.selfClues);
+  if (!profile) {
+    return;
+  }
+
+  const container = document.getElementById("host-personal-profile");
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML = "";
+
+  const title = document.createElement("h3");
+  title.textContent = `${profile.personaName}${profile.personaTitle ? ` · ${profile.personaTitle}` : ""}`;
+  container.appendChild(title);
+
+  if (profile.timeline.length > 0) {
+    const timelineSection = document.createElement("div");
+    timelineSection.className = "profile-section";
+    const timelineTitle = document.createElement("h4");
+    timelineTitle.textContent = "타임라인";
+    timelineSection.appendChild(timelineTitle);
+    timelineSection.appendChild(createClueList(profile.timeline));
+    container.appendChild(timelineSection);
+  }
+
+  if (profile.evidence.length > 0) {
+    const evidenceSection = document.createElement("div");
+    evidenceSection.className = "profile-section";
+    const evidenceTitle = document.createElement("h4");
+    evidenceTitle.textContent = "증거 정황";
+    evidenceSection.appendChild(evidenceTitle);
+    evidenceSection.appendChild(createClueList(profile.evidence));
+    container.appendChild(evidenceSection);
+  }
+
+  if (profile.alibis.length > 0) {
+    const alibiSection = document.createElement("div");
+    alibiSection.className = "profile-section";
+    const alibiTitle = document.createElement("h4");
+    alibiTitle.textContent = "추천 변명";
+    alibiSection.appendChild(alibiTitle);
+    alibiSection.appendChild(createClueList(profile.alibis));
+    container.appendChild(alibiSection);
+  }
 }
 
 function getUnlockedRounds(cluePackage) {
@@ -1934,6 +2292,7 @@ function renderHostRoleView(player) {
     placeholder.className = "placeholder";
     placeholder.textContent = "게임 시작 후 역할과 단서가 표시됩니다.";
     container.appendChild(placeholder);
+    renderHostPersonalProfile(null);
     return;
   }
 
@@ -2019,6 +2378,9 @@ function renderHostRoleView(player) {
     }
     container.appendChild(masterSection);
   }
+
+  const profile = buildPersonalProfile(player, cluePackage);
+  renderHostPersonalProfile(profile);
 }
 
 function renderGamePlayerStatus(players = []) {
@@ -2363,6 +2725,9 @@ function attachEventListeners() {
   if (dom.copyPlayerLink) {
     dom.copyPlayerLink.addEventListener("click", copyPlayerLink);
   }
+  if (dom.hostReadyToggleBtn) {
+    dom.hostReadyToggleBtn.addEventListener("click", handleHostReadyToggle);
+  }
   dom.tabButtons.forEach((button) => {
     button.addEventListener("click", () => {
       switchTab(button.dataset.tab);
@@ -2406,6 +2771,7 @@ async function initialise() {
   await hydrateRemoteScenarios();
   await refreshHostResumeSessions();
   await resumeHostSessionFromStorage();
+  updateHostReadyUI();
 }
 
 function toggleChatAvailability(enabled) {
