@@ -9,14 +9,38 @@ const firebaseConfig = {
   measurementId: "G-37RQG0RYWM"
 };
 
+const FIREBASE_ALLOWED_HOSTS = ["zippy-bonbon-5a7dd7.netlify.app"];
+
+function shouldEnableFirebase() {
+  if (typeof window === "undefined") {
+    return true;
+  }
+  const host = window.location?.hostname || "";
+  if (window.CRIME_FORCE_FIREBASE === true || window.CRIME_FORCE_FIREBASE === "true") {
+    return true;
+  }
+  try {
+    if (window.localStorage?.getItem("crime:forceFirebase") === "true") {
+      return true;
+    }
+  } catch (error) {
+    // no-op when storage is unavailable
+  }
+  return FIREBASE_ALLOWED_HOSTS.includes(host);
+}
+
 const FIREBASE_APP_URL = "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 const FIRESTORE_URL = "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 let firebaseModulePromise = null;
 let firebaseAppInstance = null;
 let firestoreInstance = null;
+let firebaseEnabled = shouldEnableFirebase();
 
 async function loadFirebaseModules() {
+  if (!firebaseEnabled) {
+    return null;
+  }
   if (!firebaseModulePromise) {
     firebaseModulePromise = (async () => {
       try {
@@ -36,6 +60,7 @@ async function loadFirebaseModules() {
         };
       } catch (error) {
         console.warn("Firebase 모듈 로딩 실패", error);
+        firebaseEnabled = false;
         return null;
       }
     })();
@@ -58,6 +83,9 @@ async function ensureFirestore() {
 }
 
 export async function fetchRemoteScenarios() {
+  if (!firebaseEnabled) {
+    return [];
+  }
   try {
     const libs = await loadFirebaseModules();
     if (!libs) {
@@ -73,6 +101,7 @@ export async function fetchRemoteScenarios() {
       .filter((scenario) => scenario?.id && scenario?.title);
   } catch (error) {
     console.warn("원격 사건 세트를 불러오지 못했습니다.", error);
+    firebaseEnabled = false;
     return [];
   }
 }
