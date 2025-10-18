@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>크라임씬: 온라인 추리 세션 허브</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-shell">
+        <header class="hero hero--landing">
+            <div class="hero__overlay"></div>
+            <div class="hero__content">
+                <nav class="top-nav">
+                    <a class="brand" href="index.html">크라임씬</a>
+                    <div class="top-nav__links">
+                        <a href="host.html" class="nav-link">호스트 콘솔</a>
+                        <a href="player.html" class="nav-link">플레이어 입장</a>
+                    </div>
+                </nav>
+                <p class="hero__label">멀티플레이 온라인 미스터리</p>
+                <h1 class="hero__title">세션을 생성하고 팀원과 함께 사건을 해결하세요</h1>
+                <p class="hero__subtitle">호스트는 전용 콘솔에서 사건 세트를 선택하고, 참가자는 개인 디바이스로 접속해 랜덤으로 배정된 역할과 단서를 확인합니다.</p>
+                <div class="hero__cta">
+                    <a class="btn btn--primary" href="host.html">호스트 콘솔 열기</a>
+                    <a class="btn btn--ghost" href="player.html">플레이어 입장 페이지</a>
+                </div>
+            </div>
+        </header>
+
+        <main class="main">
+            <section class="section section--highlight" id="scenarioOverview">
+                <div class="section__header">
+                    <h2 class="section__title">사건 세트 미리보기</h2>
+                    <p class="section__description">각 사건은 권장 인원 수와 진행 시간을 안내합니다. 인원이 부족한 경우 호스트 페이지에서 봇을 추가해 플레이할 수 있습니다.</p>
+                </div>
+                <div class="scenario-grid" id="scenarioGrid"></div>
+            </section>
+
+            <section class="section section--accent" id="scenarioBuilder">
+                <div class="section__header">
+                    <h2 class="section__title">커스텀 사건 세트 제작</h2>
+                    <p class="section__description">기본 제공 사건 세트 3종 외에도 AI를 활용해 새로운 시나리오를 작성하고, 한 번의 업로드로 Firebase에 저장할 수 있습니다.</p>
+                </div>
+                <div class="grid grid--responsive scenario-builder__grid">
+                    <article class="card card--stacked">
+                        <h3 class="card__title">프롬프트 템플릿</h3>
+                        <p class="helper-text">아래 안내를 AI에게 전달하면 모든 필수 항목이 포함된 JSON을 받을 수 있습니다. 주제만 선정해 요청해 보세요.</p>
+                        <div class="builder-actions">
+                            <button type="button" class="btn btn--secondary" id="downloadPromptTemplate">템플릿 다운로드</button>
+                            <button type="button" class="btn btn--ghost" id="copyPromptGuide">안내문 복사</button>
+                        </div>
+                        <textarea id="promptGuide" class="prompt-guide" readonly></textarea>
+                        <label class="field">
+                            <span class="field__label">AI 응답 JSON 업로드</span>
+                            <input type="file" id="promptUploadInput" accept="application/json">
+                        </label>
+                        <label class="field">
+                            <span class="field__label">JSON 직접 붙여넣기</span>
+                            <textarea id="promptJsonInput" class="field__textarea" placeholder="AI에게 받은 JSON을 그대로 붙여넣은 뒤 JSON 불러오기 버튼을 눌러주세요."></textarea>
+                        </label>
+                        <div class="builder-actions">
+                            <button type="button" class="btn btn--secondary" id="parsePromptJsonBtn">JSON 불러오기</button>
+                            <button type="button" class="btn btn--ghost" id="clearPromptJsonBtn">입력 지우기</button>
+                        </div>
+                    </article>
+                    <article class="card card--stacked">
+                        <h3 class="card__title">미리보기 & 저장</h3>
+                        <p class="helper-text">업로드한 시나리오를 검토한 뒤 Firebase에 저장하면 호스트 콘솔에서 바로 사용할 수 있습니다.</p>
+                        <div id="scenarioPreview" class="scenario-preview"></div>
+                        <button type="button" class="btn btn--primary" id="saveScenarioBtn" disabled>Firebase에 저장</button>
+                        <p class="helper-text status-message" id="scenarioBuilderStatus"></p>
+                    </article>
+                </div>
+            </section>
+
+            <section class="section">
+                <div class="section__header">
+                    <h2 class="section__title">진행 방식</h2>
+                    <p class="section__description">팀 구성과 역할 배정은 모두 호스트 콘솔에서 중앙 집중적으로 처리되며, 참가자는 모바일 기기에서도 최적화된 뷰를 이용할 수 있습니다.</p>
+                </div>
+                <div class="grid grid--responsive info-cards">
+                    <article class="card">
+                        <h3 class="card__title">1. 세션 생성</h3>
+                        <p>호스트 콘솔에서 사건 세트를 선택하고 세션 코드를 생성합니다. 자동 혹은 커스텀 코드를 사용할 수 있으며, 최소/최대 인원 안내가 표시됩니다.</p>
+                    </article>
+                    <article class="card">
+                        <h3 class="card__title">2. 참가자 초대</h3>
+                        <p>참가자는 플레이어 페이지에서 세션 코드와 본인 닉네임, PIN으로 입장합니다. 인원이 부족하면 봇을 추가해 조건을 맞출 수 있습니다.</p>
+                    </article>
+                    <article class="card">
+                        <h3 class="card__title">3. 랜덤 역할 배정</h3>
+                        <p>최소 인원이 모이면 역할이 자동으로 랜덤 배정됩니다. 각 참가자는 자신의 단서를 확인하며 채팅 보드에서 토론을 펼칠 수 있습니다.</p>
+                    </article>
+                </div>
+            </section>
+
+            <section class="section section--muted">
+                <div class="section__header">
+                    <h2 class="section__title">빠른 링크</h2>
+                    <p class="section__description">필요한 페이지를 바로 열어 진행을 시작해 보세요.</p>
+                </div>
+                <div class="quick-links">
+                    <a class="quick-link" href="host.html">
+                        <span>호스트 콘솔</span>
+                        <small>세션 생성 · 역할 관리 · 채팅 감독</small>
+                    </a>
+                    <a class="quick-link" href="player.html">
+                        <span>플레이어 입장</span>
+                        <small>코드 입력 · PIN 인증 · 단서 열람</small>
+                    </a>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <div class="footer__content">
+                <p class="footer__title">크라임씬 멀티플레이 세션 허브</p>
+                <p>모바일 친화적 UI와 실시간 협업 도구로 완성된 온라인 추리 경험을 제공합니다.</p>
+                <small>배포는 Publish 탭에서 바로 진행할 수 있습니다.</small>
+            </div>
+        </footer>
+    </div>
+
+    <script src="js/landing.js" type="module"></script>
+</body>
+</html>

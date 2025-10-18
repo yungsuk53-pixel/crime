@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>크라임씬 플레이어 포털</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-shell player-app">
+        <header class="app-header">
+            <a class="brand" href="index.html">크라임씬</a>
+            <nav class="app-header__actions">
+                <a href="host.html" class="nav-link">호스트 콘솔</a>
+            </nav>
+        </header>
+
+        <main class="app-main">
+            <section id="joinView" class="app-view app-view--active" aria-labelledby="joinTitle">
+                <div class="panel panel--center">
+                    <article class="card card--join">
+                        <h1 id="joinTitle" class="card__title">세션 입장</h1>
+                        <p class="helper-text">호스트에게 받은 세션 코드와 닉네임만 입력하면 대기실로 이동합니다. 처음 접속하는 경우 닉네임은 곧바로 플레이어 목록에 등록됩니다.</p>
+                        <form id="playerAccessForm" class="form form--stack">
+                            <label class="field">
+                                <span class="field__label">세션 코드</span>
+                                <input type="text" id="accessSessionCode" class="field__input" placeholder="공유 받은 코드" required>
+                            </label>
+                            <label class="field">
+                                <span class="field__label">닉네임</span>
+                                <input type="text" id="accessPlayerName" class="field__input" placeholder="본인 닉네임" required>
+                            </label>
+                            <button type="submit" class="btn btn--primary">대기실 입장</button>
+                        </form>
+                    </article>
+                    <aside class="card" id="recentSessionsSection" hidden>
+                        <h2 class="card__title">내가 참여한 세션</h2>
+                        <p class="helper-text">아직 종료되지 않은 세션이 있으면 아래에서 즉시 재접속할 수 있습니다.</p>
+                        <div id="recentSessionsList" class="list-resume"></div>
+                    </aside>
+                </div>
+            </section>
+
+            <section id="playerAppView" class="app-view" aria-labelledby="playerAppTitle">
+                <header class="view-header">
+                    <div>
+                        <h2 id="playerAppTitle" class="view-header__title">세션 참여</h2>
+                        <p class="view-header__subtitle">탭을 눌러 대기실 현황, 단서, 채팅, 투표 화면을 전환하세요.</p>
+                    </div>
+                    <div class="view-header__actions">
+                        <span class="badge" id="playerStageBadge">대기 중</span>
+                    </div>
+                </header>
+
+                <div class="tab-nav" role="tablist">
+                    <button class="tab-nav__btn tab-nav__btn--active" data-tab="lobby" type="button">대기실</button>
+                    <button class="tab-nav__btn" data-tab="clues" type="button">내 단서</button>
+                    <button class="tab-nav__btn" data-tab="scenario" type="button">사건 정보</button>
+                    <button class="tab-nav__btn" data-tab="chat" type="button">채팅</button>
+                    <button class="tab-nav__btn" data-tab="inventory" type="button">인벤토리</button>
+                    <button class="tab-nav__btn" data-tab="vote" type="button">투표</button>
+                </div>
+
+                <div class="tab-panels">
+                    <section class="tab-panel tab-panel--active" data-tab="lobby">
+                        <article class="card card--stacked">
+                            <h3 class="card__title">세션 정보</h3>
+                            <div class="session-meta session-meta--grid" id="playerSessionMeta"></div>
+                            <div class="lobby-status" id="lobbyStatus"></div>
+                        </article>
+                        <article class="card">
+                            <h3 class="card__title">진행 단계</h3>
+                            <ol class="stage-tracker stage-tracker--compact" id="playerStageTracker">
+                                <li class="stage-tracker__item stage-tracker__item--active" data-stage="lobby">
+                                    <div class="stage-tracker__label">대기실</div>
+                                </li>
+                                <li class="stage-tracker__item" data-stage="briefing">
+                                    <div class="stage-tracker__label">브리핑</div>
+                                </li>
+                                <li class="stage-tracker__item" data-stage="clue_a">
+                                    <div class="stage-tracker__label">1차 단서 공개</div>
+                                </li>
+                                <li class="stage-tracker__item" data-stage="discussion_a">
+                                    <div class="stage-tracker__label">1차 토론</div>
+                                </li>
+                                <li class="stage-tracker__item" data-stage="clue_b">
+                                    <div class="stage-tracker__label">2차 단서 공개</div>
+                                </li>
+                                <li class="stage-tracker__item" data-stage="discussion_b">
+                                    <div class="stage-tracker__label">2차 토론</div>
+                                </li>
+                                <li class="stage-tracker__item" data-stage="clue_c">
+                                    <div class="stage-tracker__label">3차 단서 공개</div>
+                                </li>
+                                <li class="stage-tracker__item" data-stage="final_discussion">
+                                    <div class="stage-tracker__label">최종 토론</div>
+                                </li>
+                                <li class="stage-tracker__item" data-stage="voting">
+                                    <div class="stage-tracker__label">최후 투표</div>
+                                </li>
+                                <li class="stage-tracker__item" data-stage="result">
+                                    <div class="stage-tracker__label">결과 발표</div>
+                                </li>
+                            </ol>
+                        </article>
+                    </section>
+
+                    <section class="tab-panel" data-tab="clues">
+                        <article class="card card--accent">
+                            <div class="card__header-row">
+                                <h3 class="card__title">내 역할 &amp; 단서</h3>
+                                <div class="ready-control">
+                                    <span id="readyStatus" class="badge">투표 대기</span>
+                                    <button type="button" id="readyToggleBtn" class="btn btn--secondary">턴 끝내기</button>
+                                </div>
+                            </div>
+                            <p class="helper-text">현재 단계가 충분히 진행되었다고 느낀다면 "턴 끝내기" 버튼을 눌러 다음 단계로 이동하는 투표에 참여하세요. 언제든 다시 눌러 투표를 취소할 수 있습니다.</p>
+                            <div class="role-view" id="roleView">
+                                <p class="placeholder">세션에 접속하면 개인 단서가 표시됩니다.</p>
+                            </div>
+                        </article>
+                    </section>
+
+                    <section class="tab-panel" data-tab="scenario">
+                        <article class="card">
+                            <h3 class="card__title" id="playerScenarioTitle">사건 정보</h3>
+                            <p id="playerScenarioTagline" class="helper-text"></p>
+                            <p id="playerScenarioSummary"></p>
+                            <div class="info-columns">
+                                <div>
+                                    <h4>핵심 갈등</h4>
+                                    <ul id="playerScenarioConflicts" class="list-number"></ul>
+                                </div>
+                                <div>
+                                    <h4>추천 질문</h4>
+                                    <ul id="playerScenarioPrompts" class="list-number"></ul>
+                                </div>
+                            </div>
+                        </article>
+                        <article class="card">
+                            <h3 class="card__title">타임라인</h3>
+                            <ul class="timeline" id="playerScenarioTimeline"></ul>
+                        </article>
+                        <article class="card">
+                            <h3 class="card__title">주요 증거</h3>
+                            <div class="evidence-grid">
+                                <div>
+                                    <h4>물적 증거</h4>
+                                    <ul id="playerEvidencePhysical" class="list-bullet"></ul>
+                                </div>
+                                <div>
+                                    <h4>디지털 & 기타</h4>
+                                    <ul id="playerEvidenceDigital" class="list-bullet"></ul>
+                                </div>
+                            </div>
+                        </article>
+                    </section>
+
+                    <section class="tab-panel" data-tab="inventory">
+                        <article class="card">
+                            <h3 class="card__title">단서 인벤토리</h3>
+                            <p class="helper-text">지금까지 공개된 단서와 증거를 단계별로 모아둔 보관함입니다.</p>
+                            <div id="inventoryList" class="inventory-list"></div>
+                        </article>
+                    </section>
+
+                    <section class="tab-panel" data-tab="chat">
+                        <article class="card">
+                            <h3 class="card__title">실시간 채팅</h3>
+                            <div class="chat-board chat-board--player">
+                                <div class="chat-board__main">
+                                    <div class="chat-log" id="playerChatLog" aria-live="polite"></div>
+                                    <form id="playerChatForm" class="chat-form">
+                                        <input type="text" id="playerChatMessage" class="field__input" placeholder="메시지를 입력하세요" autocomplete="off" disabled>
+                                        <button type="submit" class="btn btn--primary" disabled>전송</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </article>
+                    </section>
+
+                    <section class="tab-panel" data-tab="vote">
+                        <article class="card">
+                            <h3 class="card__title">최후 투표</h3>
+                            <form id="voteForm" class="form">
+                                <label class="field">
+                                    <span class="field__label">범인이라고 생각하는 사람</span>
+                                    <select id="voteTarget" class="field__select" disabled></select>
+                                </label>
+                                <button type="submit" class="btn btn--primary" disabled>투표 제출</button>
+                            </form>
+                            <p class="helper-text" id="voteHelper">투표가 시작되면 선택지가 활성화됩니다.</p>
+                            <div class="vote-result" id="playerVoteStatus"></div>
+                        </article>
+                    </section>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <div class="footer__content">
+                <p class="footer__title">크라임씬 플레이어 포털</p>
+                <p>랜덤으로 배정된 역할과 단서를 확인하고 팀과 함께 범인을 추리하세요.</p>
+                <small>문제가 발생하면 호스트에게 문의하세요.</small>
+            </div>
+        </footer>
+    </div>
+
+    <dialog id="toast" class="toast" aria-live="assertive"></dialog>
+    <script src="js/player.js" type="module"></script>
+</body>
+</html>
