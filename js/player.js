@@ -30,7 +30,9 @@ const state = {
   autoJoinAttempted: false,
   readyInFlight: false,
   activeView: "join",
-  activeTab: "lobby"
+  activeTab: "lobby",
+  activeScenario: null,
+  personalProfile: null
 };
 
 const dom = {
@@ -63,6 +65,10 @@ const dom = {
   voteSubmit: document.querySelector("#voteForm button[type='submit']"),
   voteHelper: document.getElementById("voteHelper"),
   playerVoteStatus: document.getElementById("playerVoteStatus"),
+  profileNotice: document.getElementById("profileNotice"),
+  profileTimeline: document.getElementById("profileTimeline"),
+  profileEvidence: document.getElementById("profileEvidence"),
+  profileAlibis: document.getElementById("profileAlibis"),
   tabButtons: document.querySelectorAll("#playerAppView .tab-nav__btn"),
   tabPanels: document.querySelectorAll("#playerAppView .tab-panel"),
   toast: document.getElementById("toast")
@@ -120,6 +126,22 @@ function renderTimeline(element, entries = []) {
   });
 }
 
+function renderListWithFallback(element, items = [], fallbackMessage) {
+  if (!element) return;
+  element.innerHTML = "";
+  if (!items.length) {
+    const li = document.createElement("li");
+    li.textContent = fallbackMessage;
+    element.appendChild(li);
+    return;
+  }
+  items.forEach((item) => {
+    const li = document.createElement("li");
+    li.textContent = item;
+    element.appendChild(li);
+  });
+}
+
 function parseCluePackage(raw) {
   if (!raw) return null;
   try {
@@ -128,6 +150,186 @@ function parseCluePackage(raw) {
     console.warn("clue parsing failed", error);
     return null;
   }
+}
+
+function flattenScenarioPersonas(scenario) {
+  if (!scenario?.roles) return [];
+  const personas = [];
+  const { detective = [], culprit = [], suspects = [] } = scenario.roles;
+  detective.forEach((persona) => {
+    personas.push({ data: persona, type: "detective", label: "탐정" });
+  });
+  culprit.forEach((persona) => {
+    personas.push({ data: persona, type: "culprit", label: "범인" });
+  });
+  suspects.forEach((persona) => {
+    personas.push({ data: persona, type: "suspect", label: "용의자" });
+  });
+  return personas;
+}
+
+function gatherPersonaLines(persona) {
+  const results = [];
+  const pushLines = (items, label) => {
+    (items || []).forEach((item) => {
+      if (typeof item !== "string") return;
+      const trimmed = item.trim();
+      if (!trimmed) return;
+      results.push({ text: trimmed, label });
+    });
+  };
+  pushLines(persona?.truths, "진실");
+  pushLines(persona?.misdirections, "혼선");
+  pushLines(persona?.prompts, "프롬프트");
+  pushLines(persona?.exposed, "노출 위험");
+  if (persona?.master) {
+    pushLines(persona.master.truths, "비밀 진실");
+    pushLines(persona.master.exposed, "폭로 경고");
+  }
+  return results;
+}
+
+function buildPersonalProfile(player, cluePackage) {
+  if (!player || !cluePackage || !state.activeScenario) {
+    return null;
+  }
+
+  const scenario = state.activeScenario;
+  const characterParts = (player.character || "").split(" · ");
+  const personaName = (cluePackage.persona?.name || characterParts[0] || player.name || "").trim();
+  const personaTitle = (cluePackage.persona?.title || characterParts[1] || "").trim();
+  const personas = flattenScenarioPersonas(scenario);
+  const selfEntry = personas.find((entry) => entry.data.name === personaName) || null;
+
+  const timelineSet = new Set();
+  const addLines = (lines) => {
+    (lines || []).forEach((line) => {
+      if (typeof line !== "string") return;
+      const trimmed = line.trim();
+      if (!trimmed) return;
+      timelineSet.add(trimmed);
+    });
+  };
+
+  if (cluePackage.briefing) {
+    addLines([cluePackage.briefing]);
+  }
+  if (selfEntry?.data?.briefing) {
+    addLines([selfEntry.data.briefing]);
+  }
+  addLines(selfEntry?.data?.truths);
+  addLines(selfEntry?.data?.timeline);
+  if (cluePackage.master?.truths) {
+    addLines(cluePackage.master.truths);
+  }
+  (cluePackage.rounds || []).forEach((round) => {
+    addLines(round.truths);
+  });
+  const timeline = Array.from(timelineSet);
+
+  const evidenceEntries = [];
+  const addEvidenceEntry = (display, detail) => {
+    if (!display) return;
+    if (evidenceEntries.some((entry) => entry.display === display)) return;
+    evidenceEntries.push({ display, detail });
+  };
+
+  const tokens = new Set();
+  if (personaName) tokens.add(personaName.toLowerCase());
+  if (personaTitle) tokens.add(personaTitle.toLowerCase());
+  if (player.name) tokens.add(player.name.toLowerCase());
+
+  const matchesTarget = (text = "") => {
+    const lower = text.toLowerCase();
+    for (const token of tokens) {
+      if (token && lower.includes(token)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  personas.forEach((entry) => {
+    if (entry.data.name === personaName) {
+      return;
+    }
+    const lines = gatherPersonaLines(entry.data);
+    lines.forEach(({ text, label }) => {
+      if (matchesTarget(text)) {
+        const display = `${entry.data.name} (${entry.label}) · ${label}: ${text}`;
+        addEvidenceEntry(display, text);
+      }
+    });
+  });
+
+  const scenarioEvidence = [
+    ...(scenario.evidence?.physical || []),
+    ...(scenario.evidence?.digital || [])
+  ];
+  scenarioEvidence.forEach((item) => {
+    if (matchesTarget(item)) {
+      addEvidenceEntry(`공용 증거: ${item}`, item);
+    }
+  });
+
+  const evidence = evidenceEntries.map((entry) => entry.display);
+
+  const alibiSet = new Set();
+  const addAlibiLines = (lines) => {
+    (lines || []).forEach((line) => {
+      if (typeof line !== "string") return;
+      const trimmed = line.trim();
+      if (!trimmed) return;
+      alibiSet.add(trimmed);
+    });
+  };
+
+  addAlibiLines(selfEntry?.data?.misdirections);
+  (cluePackage.rounds || []).forEach((round) => {
+    addAlibiLines(round.misdirections);
+  });
+
+  const detailSet = new Set(
+    evidenceEntries
+      .map((entry) => entry.detail)
+      .filter((detail) => typeof detail === "string" && detail.trim())
+  );
+
+  let addedCounter = 0;
+  detailSet.forEach((detail) => {
+    if (addedCounter >= 3) {
+      return;
+    }
+    const trimmed = detail.length > 80 ? `${detail.slice(0, 77)}...` : detail;
+    alibiSet.add(`"${trimmed}" 라는 의심에는 상황은 인정하되 사건과 무관함을 강조하세요. 예) "맞아요, 그런 일이 있었지만 범행과는 아무 관련이 없어요."`);
+    addedCounter += 1;
+  });
+
+  if (!alibiSet.size) {
+    alibiSet.add("행동의 이유를 침착하게 설명하고, 당시 알리바이나 증인을 준비해 두라고 팀에 공유하세요.");
+  }
+
+  const profile = {
+    personaName,
+    personaTitle,
+    timeline,
+    evidence,
+    alibis: Array.from(alibiSet)
+  };
+
+  state.personalProfile = profile;
+  return profile;
+}
+
+function renderPersonalProfile(profile) {
+  if (dom.profileNotice) {
+    dom.profileNotice.textContent = profile
+      ? `${profile.personaTitle ? `${profile.personaTitle} · ` : ""}${profile.personaName} 시점에서 정리된 개인 정보입니다.`
+      : "역할이 확정되면 개인 정보가 표시됩니다.";
+  }
+  renderListWithFallback(dom.profileTimeline, profile?.timeline || [], "타임라인 정보가 준비되지 않았습니다.");
+  renderListWithFallback(dom.profileEvidence, profile?.evidence || [], "나에 대한 특이 증거가 아직 보고되지 않았습니다.");
+  renderListWithFallback(dom.profileAlibis, profile?.alibis || [], "추천 변명이 준비되는 중입니다.");
 }
 
 function getRoleBadgeClass(role) {
@@ -317,6 +519,8 @@ function renderRoleView(player) {
     placeholder.className = "placeholder";
     placeholder.textContent = "세션에 접속하고 PIN을 입력하면 개인 단서가 표시됩니다.";
     container.appendChild(placeholder);
+    state.personalProfile = null;
+    renderPersonalProfile(null);
     return;
   }
 
@@ -334,10 +538,21 @@ function renderRoleView(player) {
         ? "게임이 시작되면 역할과 단서가 공개됩니다."
         : "역할 배정을 기다리는 중입니다.";
     container.appendChild(placeholder);
+    state.personalProfile = null;
+    renderPersonalProfile(null);
     return;
   }
 
   const cluePackage = parseCluePackage(player.clue_summary);
+  if (!cluePackage) {
+    const placeholder = document.createElement("p");
+    placeholder.className = "placeholder";
+    placeholder.textContent = "개인 단서를 불러오지 못했습니다.";
+    container.appendChild(placeholder);
+    state.personalProfile = null;
+    renderPersonalProfile(null);
+    return;
+  }
   const header = document.createElement("div");
   header.className = "role-view__header";
 
@@ -463,6 +678,9 @@ function renderRoleView(player) {
     }
     container.appendChild(masterSection);
   }
+
+  const profile = buildPersonalProfile(player, cluePackage);
+  renderPersonalProfile(profile);
 }
 
 function updateStageTracker(stageKey) {
@@ -747,6 +965,7 @@ function onJoinSuccess(session, player) {
   switchTab("lobby");
 
   const scenario = getScenarioById(session.scenario_id);
+  state.activeScenario = scenario || null;
   renderScenario(scenario);
   renderRoleView(player);
   renderSessionMeta(session, scenario);
@@ -816,6 +1035,14 @@ async function refreshSessionState() {
   state.session = latest;
 
   const scenario = getScenarioById(latest.scenario_id);
+  const previousScenarioId = state.activeScenario?.id;
+  state.activeScenario = scenario || state.activeScenario;
+  if (scenario && previousScenarioId !== scenario.id) {
+    renderScenario(scenario);
+    if (state.player) {
+      renderRoleView(state.player);
+    }
+  }
   renderSessionMeta(latest, scenario);
   renderLobbyStatus(latest, state.player);
   updateStageTracker(latest.stage);
@@ -1181,6 +1408,19 @@ async function hydrateRemoteScenarios() {
     const remote = await fetchRemoteScenarios();
     if (remote.length) {
       registerScenarios(remote);
+      if (state.session?.scenario_id) {
+        const scenario = getScenarioById(state.session.scenario_id);
+        if (scenario) {
+          const previousScenarioId = state.activeScenario?.id;
+          state.activeScenario = scenario;
+          if (previousScenarioId !== scenario.id) {
+            renderScenario(scenario);
+            if (state.player) {
+              renderRoleView(state.player);
+            }
+          }
+        }
+      }
     }
   } catch (error) {
     console.warn("원격 사건 세트 로드 실패", error);
