@@ -132,6 +132,7 @@ const state = {
 };
 
 const HOST_STORAGE_KEY = "crimeSceneHostSession";
+const HOST_RECENTS_STORAGE_KEY = "crimeSceneHostRecentSessions";
 
 function persistHostSession(sessionCode, hostName) {
   try {
@@ -160,6 +161,144 @@ function clearHostSessionCredentials() {
   } catch (error) {
     console.warn("호스트 세션 정보를 삭제하지 못했습니다.", error);
   }
+}
+
+function loadRecentHostSessions() {
+  try {
+    const raw = localStorage.getItem(HOST_RECENTS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((entry) => {
+        if (!entry || typeof entry !== "object") return null;
+        const sessionCode = (entry.sessionCode || "").toUpperCase();
+        const hostName = typeof entry.hostName === "string" ? entry.hostName.trim() : "";
+        if (!sessionCode || !hostName) return null;
+        return {
+          sessionCode,
+          hostName,
+          scenarioId: entry.scenarioId || null,
+          updatedAt: entry.updatedAt || entry.joinedAt || null
+        };
+      })
+      .filter(Boolean);
+  } catch (error) {
+    console.warn("최근 호스트 세션 목록을 불러오지 못했습니다.", error);
+    return [];
+  }
+}
+
+function saveRecentHostSessions(entries) {
+  try {
+    localStorage.setItem(HOST_RECENTS_STORAGE_KEY, JSON.stringify(entries));
+  } catch (error) {
+    console.warn("최근 호스트 세션 정보를 저장하지 못했습니다.", error);
+  }
+}
+
+function rememberRecentHostSession(sessionCode, hostName, scenarioId) {
+  if (!sessionCode || !hostName) return;
+  const code = sessionCode.toUpperCase();
+  const displayName = hostName.trim();
+  if (!code || !displayName) return;
+  const existing = loadRecentHostSessions();
+  const filtered = existing.filter(
+    (entry) => !(entry.sessionCode === code && entry.hostName === displayName)
+  );
+  const updated = [
+    {
+      sessionCode: code,
+      hostName: displayName,
+      scenarioId: scenarioId || null,
+      updatedAt: new Date().toISOString()
+    },
+    ...filtered
+  ];
+  saveRecentHostSessions(updated.slice(0, 6));
+}
+
+async function refreshHostResumeSessions() {
+  if (!dom.hostResumeSection || !dom.hostResumeList) return;
+  const stored = loadRecentHostSessions();
+  if (!stored.length) {
+    dom.hostResumeSection.hidden = true;
+    dom.hostResumeList.innerHTML = "";
+    return;
+  }
+
+  const uniqueCodes = Array.from(new Set(stored.map((entry) => entry.sessionCode).filter(Boolean)));
+  const codeResults = await Promise.all(
+    uniqueCodes.map(async (code) => {
+      try {
+        const session = await findSessionByCode(code);
+        return [code, session];
+      } catch (error) {
+        console.warn("세션 확인 실패", error);
+        return [code, null];
+      }
+    })
+  );
+
+  const sessionMap = new Map(codeResults);
+  const activeEntries = [];
+  const validEntries = [];
+
+  stored.forEach((entry) => {
+    const session = sessionMap.get(entry.sessionCode) || null;
+    if (!session || session.deleted || session.status === "closed") {
+      return;
+    }
+    activeEntries.push({ entry, session });
+    validEntries.push({
+      sessionCode: entry.sessionCode,
+      hostName: entry.hostName,
+      scenarioId: session.scenario_id || entry.scenarioId || null,
+      updatedAt: entry.updatedAt || new Date().toISOString()
+    });
+  });
+
+  saveRecentHostSessions(validEntries);
+
+  if (!activeEntries.length) {
+    dom.hostResumeSection.hidden = true;
+    dom.hostResumeList.innerHTML = "";
+    return;
+  }
+
+  dom.hostResumeSection.hidden = false;
+  dom.hostResumeList.innerHTML = "";
+  const fragment = document.createDocumentFragment();
+
+  activeEntries.forEach(({ entry, session }) => {
+    const scenario = getScenarioById(session.scenario_id) || state.activeScenario;
+    const stageLabel = stageLabels[session.stage] || session.stage || "-";
+    const statusText = formatStatusText(session.status);
+    const item = document.createElement("div");
+    item.className = "list-resume__item";
+
+    const meta = document.createElement("div");
+    meta.className = "list-resume__meta";
+    const title = document.createElement("strong");
+    title.textContent = scenario?.title || `세션 ${session.code}`;
+    const line = document.createElement("span");
+    line.textContent = `${session.code} · ${stageLabel}`;
+    const hostLine = document.createElement("span");
+    hostLine.textContent = `${entry.hostName} 호스트 · ${statusText}`;
+    meta.append(title, line, hostLine);
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn btn--primary";
+    button.dataset.hostResumeSession = entry.sessionCode;
+    button.dataset.hostResumeName = entry.hostName;
+    button.textContent = "세션 복귀";
+
+    item.append(meta, button);
+    fragment.appendChild(item);
+  });
+
+  dom.hostResumeList.appendChild(fragment);
 }
 
 const dom = {
@@ -197,6 +336,8 @@ const dom = {
   gameReadyStatus: document.getElementById("gameReadyStatus"),
   createSessionForm: document.getElementById("createSessionForm"),
   sessionResult: document.getElementById("sessionResult"),
+  hostResumeSection: document.getElementById("hostResumeSection"),
+  hostResumeList: document.getElementById("hostResumeList"),
   addPlayerForm: document.getElementById("addPlayerForm"),
   playerNameInput: document.getElementById("playerNameInput"),
   addBotBtn: document.getElementById("addBotBtn"),
@@ -912,6 +1053,8 @@ async function handleCreateSession(event) {
 
     updateSessionResultDisplay();
     persistHostSession(sessionCode, hostName);
+  rememberRecentHostSession(sessionCode, hostName, selectedScenario.id);
+  await refreshHostResumeSessions();
     showToast("세션이 생성되었습니다. 대기실에서 플레이어를 기다리세요.", "success");
     ensureViewForStage("lobby");
     updateStageTracker("lobby");
@@ -939,41 +1082,78 @@ async function handleCreateSession(event) {
   }
 }
 
-async function resumeHostSessionFromStorage() {
-  const stored = loadHostSessionCredentials();
-  if (!stored?.sessionCode) {
-    return false;
-  }
+async function handleHostResumeClick(event) {
+  const button = event.target.closest("button[data-host-resume-session]");
+  if (!button) return;
+  const sessionCode = button.dataset.hostResumeSession;
+  const hostName = button.dataset.hostResumeName;
+  if (!sessionCode || !hostName) return;
+
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = "복귀 중...";
   try {
-    const session = await findSessionByCode(stored.sessionCode);
-    if (!session || session.deleted) {
-      clearHostSessionCredentials();
+    const success = await resumeHostSession(sessionCode, hostName);
+    if (!success) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  } catch (error) {
+    console.error("host resume failed", error);
+    showToast("세션을 불러오지 못했습니다.", "error");
+    button.disabled = false;
+    button.textContent = originalText;
+  } finally {
+    await refreshHostResumeSessions();
+  }
+}
+
+async function resumeHostSession(sessionCode, hostName, { silent = false } = {}) {
+  if (!sessionCode) return false;
+  try {
+    const code = sessionCode.toUpperCase();
+    const session = await findSessionByCode(code);
+    if (!session || session.deleted || session.status === "closed") {
+      if (!silent) {
+        showToast("세션이 종료되었거나 더 이상 진행 중이 아닙니다.", "warn");
+      }
+      if (loadHostSessionCredentials()?.sessionCode === code) {
+        clearHostSessionCredentials();
+      }
+      const remaining = loadRecentHostSessions().filter((entry) => entry.sessionCode !== code);
+      saveRecentHostSessions(remaining);
+      await refreshHostResumeSessions();
       return false;
     }
+
     state.activeSession = session;
     state.sessionRecordId = session.id;
-    state.hostPlayerName = stored.hostName || session.host_name || "";
+    const identity = hostName || session.host_name || state.hostPlayerName || "호스트";
+    state.hostPlayerName = identity;
     const scenario = getScenarioById(session.scenario_id) || state.activeScenario;
     if (scenario) {
       dom.scenarioSelect.value = scenario.id;
       renderScenario(scenario);
+      state.activeScenario = scenario;
     }
+
     ensureViewForStage(session.stage);
     updateStageTracker(session.stage);
     updateSessionMeta();
     updateResultBanner();
     updateControlStates();
+
     toggleChatAvailability(true);
     ensureChatPolling(session.code);
-    const hostIdentity = state.hostPlayerName || session.host_name || "호스트";
     state.chatIdentity = {
-      name: hostIdentity,
+      name: identity,
       role: "호스트",
       sessionCode: session.code
     };
     if (dom.chatStatus) {
-      dom.chatStatus.textContent = `${hostIdentity}님이 호스트로 접속했습니다. 채팅 입력 시 역할이 표시됩니다.`;
+      dom.chatStatus.textContent = `${identity}님이 호스트로 접속했습니다. 채팅 입력 시 역할이 표시됩니다.`;
     }
+
     await loadPlayers();
     await ensureStageSchedule();
     startPlayerPolling();
@@ -981,13 +1161,34 @@ async function resumeHostSessionFromStorage() {
     startStageTimerLoop();
     updateStageTimerDisplay();
     updateSessionResultDisplay();
-    showToast("기존 세션으로 복귀했습니다.", "info");
+
+    persistHostSession(session.code, identity);
+    rememberRecentHostSession(session.code, identity, session.scenario_id);
+    await refreshHostResumeSessions();
+
+    if (!silent) {
+      showToast("기존 세션으로 복귀했습니다.", "success");
+    }
     return true;
   } catch (error) {
-    console.warn("호스트 세션 자동 복귀에 실패했습니다.", error);
-    clearHostSessionCredentials();
+    console.warn("호스트 세션 복귀 실패", error);
+    if (!silent) {
+      showToast("세션을 불러오지 못했습니다.", "error");
+    }
     return false;
   }
+}
+
+async function resumeHostSessionFromStorage() {
+  const stored = loadHostSessionCredentials();
+  if (!stored?.sessionCode) {
+    return false;
+  }
+  const success = await resumeHostSession(stored.sessionCode, stored.hostName, { silent: true });
+  if (!success) {
+    clearHostSessionCredentials();
+  }
+  return success;
 }
 
 function startPlayerPolling() {
@@ -2126,6 +2327,9 @@ function attachEventListeners() {
   });
 
   dom.createSessionForm.addEventListener("submit", handleCreateSession);
+  if (dom.hostResumeList) {
+    dom.hostResumeList.addEventListener("click", handleHostResumeClick);
+  }
 
   if (dom.stageUpdateBtn) {
     dom.stageUpdateBtn.addEventListener("click", handleStageUpdate);
@@ -2169,6 +2373,7 @@ function attachEventListeners() {
 async function initialise() {
   populateScenarioSelect();
   attachEventListeners();
+  await refreshHostResumeSessions();
   cloneStageTracker();
   switchTab("progress");
   setView("setup");
@@ -2199,6 +2404,7 @@ async function initialise() {
   }
   updateSessionResultDisplay();
   await hydrateRemoteScenarios();
+  await refreshHostResumeSessions();
   await resumeHostSessionFromStorage();
 }
 

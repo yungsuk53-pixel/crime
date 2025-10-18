@@ -11,6 +11,7 @@ import {
 import { fetchRemoteScenarios } from "./firebase.js";
 
 const LOCAL_STORAGE_KEY = "crimeScenePlayerSession";
+const PLAYER_RECENTS_STORAGE_KEY = "crimeScenePlayerRecentSessions";
 
 const state = {
   session: null,
@@ -69,6 +70,8 @@ const dom = {
   profileTimeline: document.getElementById("profileTimeline"),
   profileEvidence: document.getElementById("profileEvidence"),
   profileAlibis: document.getElementById("profileAlibis"),
+  recentSessionsSection: document.getElementById("recentSessionsSection"),
+  recentSessionsList: document.getElementById("recentSessionsList"),
   tabButtons: document.querySelectorAll("#playerAppView .tab-nav__btn"),
   tabPanels: document.querySelectorAll("#playerAppView .tab-panel"),
   toast: document.getElementById("toast")
@@ -509,6 +512,40 @@ async function handleReadyToggle() {
   }
 }
 
+async function handleRecentSessionClick(event) {
+  const button = event.target.closest("button[data-resume-session]");
+  if (!button) return;
+  const sessionCode = button.dataset.resumeSession;
+  const playerName = button.dataset.resumePlayer;
+  if (!sessionCode || !playerName) return;
+
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = "재접속 중...";
+  try {
+    const joined = await joinSessionWithCredentials({
+      sessionCode,
+      playerName,
+      allowCreate: false,
+      silent: true
+    });
+    if (joined) {
+      showToast(`${playerName} 이름으로 세션에 재접속했습니다.`, "success");
+    } else {
+      showToast("세션에 재접속하지 못했습니다. 진행 중인지 확인해 주세요.", "warn");
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  } catch (error) {
+    console.error("resume join failed", error);
+    showToast("세션에 재접속하지 못했습니다.", "error");
+    button.disabled = false;
+    button.textContent = originalText;
+  } finally {
+    await refreshRecentPlayerSessions();
+  }
+}
+
 function renderRoleView(player) {
   const container = dom.roleView;
   if (!container) return;
@@ -860,6 +897,147 @@ function persistSessionCredentials(sessionCode, playerName) {
   }
 }
 
+function loadRecentPlayerSessions() {
+  try {
+    const raw = localStorage.getItem(PLAYER_RECENTS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((entry) => {
+        if (!entry || typeof entry !== "object") return null;
+        const sessionCode = (entry.sessionCode || "").toUpperCase();
+        const playerName = typeof entry.playerName === "string" ? entry.playerName.trim() : "";
+        if (!sessionCode || !playerName) return null;
+        return {
+          sessionCode,
+          playerName,
+          scenarioId: entry.scenarioId || null,
+          updatedAt: entry.updatedAt || entry.joinedAt || null
+        };
+      })
+      .filter(Boolean);
+  } catch (error) {
+    console.warn("최근 세션 목록을 불러오지 못했습니다.", error);
+    return [];
+  }
+}
+
+function saveRecentPlayerSessions(entries) {
+  try {
+    localStorage.setItem(PLAYER_RECENTS_STORAGE_KEY, JSON.stringify(entries));
+  } catch (error) {
+    console.warn("최근 세션 정보를 저장하지 못했습니다.", error);
+  }
+}
+
+function rememberRecentPlayerSession(session, playerName) {
+  if (!session?.code || !playerName) return;
+  const sessionCode = session.code.toUpperCase();
+  const displayName = playerName.trim();
+  if (!sessionCode || !displayName) return;
+  const existing = loadRecentPlayerSessions();
+  const filtered = existing.filter(
+    (entry) => !(entry.sessionCode === sessionCode && entry.playerName === displayName)
+  );
+  const updated = [
+    {
+      sessionCode,
+      playerName: displayName,
+      scenarioId: session.scenario_id || null,
+      updatedAt: new Date().toISOString()
+    },
+    ...filtered
+  ];
+  saveRecentPlayerSessions(updated.slice(0, 6));
+}
+
+async function refreshRecentPlayerSessions() {
+  if (!dom.recentSessionsSection || !dom.recentSessionsList) return;
+  const stored = loadRecentPlayerSessions();
+  if (!stored.length) {
+    dom.recentSessionsSection.hidden = true;
+    dom.recentSessionsList.innerHTML = "";
+    return;
+  }
+
+  dom.recentSessionsSection.hidden = false;
+  dom.recentSessionsList.innerHTML = "";
+
+  const uniqueCodes = Array.from(
+    new Set(stored.map((entry) => entry.sessionCode).filter(Boolean))
+  );
+
+  const codeResults = await Promise.all(
+    uniqueCodes.map(async (code) => {
+      try {
+        const session = await findSessionByCode(code);
+        return [code, session];
+      } catch (error) {
+        console.warn("세션 정보를 확인하지 못했습니다.", error);
+        return [code, null];
+      }
+    })
+  );
+
+  const sessionMap = new Map(codeResults);
+  const activeEntries = [];
+  const validEntries = [];
+
+  stored.forEach((entry) => {
+    const session = sessionMap.get(entry.sessionCode) || null;
+    if (!session || session.deleted || session.status === "closed") {
+      return;
+    }
+    activeEntries.push({ entry, session });
+    validEntries.push({
+      sessionCode: entry.sessionCode,
+      playerName: entry.playerName,
+      scenarioId: session.scenario_id || entry.scenarioId || null,
+      updatedAt: entry.updatedAt || new Date().toISOString()
+    });
+  });
+
+  saveRecentPlayerSessions(validEntries);
+
+  if (!activeEntries.length) {
+    dom.recentSessionsList.innerHTML = "";
+    dom.recentSessionsSection.hidden = true;
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  activeEntries.forEach(({ entry, session }) => {
+    const scenario = getScenarioById(session.scenario_id);
+    const stageLabel = stageLabels[session.stage] || session.stage || "-";
+    const statusText = formatStatusText(session.status);
+    const item = document.createElement("div");
+    item.className = "list-resume__item";
+
+    const meta = document.createElement("div");
+    meta.className = "list-resume__meta";
+    const title = document.createElement("strong");
+    title.textContent = scenario?.title || `세션 ${session.code}`;
+    const line = document.createElement("span");
+    line.textContent = `${session.code} · ${stageLabel}`;
+    const identity = document.createElement("span");
+    identity.textContent = `${entry.playerName}로 참여 중 · ${statusText}`;
+    meta.append(title, line, identity);
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn btn--primary";
+    button.dataset.resumeSession = entry.sessionCode;
+    button.dataset.resumePlayer = entry.playerName;
+    button.textContent = "재접속";
+
+    item.append(meta, button);
+    fragment.appendChild(item);
+  });
+
+  dom.recentSessionsList.appendChild(fragment);
+}
+
 async function findSessionByCode(code) {
   try {
     const data = await api.list("sessions", { search: code, limit: "1" });
@@ -976,6 +1154,7 @@ function onJoinSuccess(session, player) {
 
   toggleChatAvailability(true);
   persistSessionCredentials(session.code, player.name);
+  rememberRecentPlayerSession(session, player.name);
   state.chatIdentity = {
     name: player.name,
     role: player.role || "플레이어",
@@ -988,6 +1167,7 @@ function onJoinSuccess(session, player) {
   loadRoster();
   sendHeartbeat();
   dom.chatMessage.focus();
+  refreshRecentPlayerSessions();
 }
 
 function stopPolling() {
@@ -1401,6 +1581,9 @@ function attachEventListeners() {
       switchTab(button.dataset.tab);
     });
   });
+  if (dom.recentSessionsList) {
+    dom.recentSessionsList.addEventListener("click", handleRecentSessionClick);
+  }
 }
 
 async function hydrateRemoteScenarios() {
@@ -1421,6 +1604,7 @@ async function hydrateRemoteScenarios() {
           }
         }
       }
+      await refreshRecentPlayerSessions();
     }
   } catch (error) {
     console.warn("원격 사건 세트 로드 실패", error);
@@ -1433,6 +1617,7 @@ async function initialise() {
   updateStageBadge("lobby");
   prefillSessionCode();
   attachEventListeners();
+  await refreshRecentPlayerSessions();
   toggleChatAvailability(false);
   updateVoteUI();
   updateReadyUI();
