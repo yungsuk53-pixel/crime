@@ -2201,54 +2201,6 @@ function createClueList(items = [], modifier = "") {
   return list;
 }
 
-function renderHostPersonalProfile() {
-  const profile = buildPersonalProfile(state.self, state.selfClues);
-  if (!profile) {
-    return;
-  }
-
-  const container = document.getElementById("host-personal-profile");
-  if (!container) {
-    return;
-  }
-
-  container.innerHTML = "";
-
-  const title = document.createElement("h3");
-  title.textContent = `${profile.personaName}${profile.personaTitle ? ` · ${profile.personaTitle}` : ""}`;
-  container.appendChild(title);
-
-  if (profile.timeline.length > 0) {
-    const timelineSection = document.createElement("div");
-    timelineSection.className = "profile-section";
-    const timelineTitle = document.createElement("h4");
-    timelineTitle.textContent = "타임라인";
-    timelineSection.appendChild(timelineTitle);
-    timelineSection.appendChild(createClueList(profile.timeline));
-    container.appendChild(timelineSection);
-  }
-
-  if (profile.evidence.length > 0) {
-    const evidenceSection = document.createElement("div");
-    evidenceSection.className = "profile-section";
-    const evidenceTitle = document.createElement("h4");
-    evidenceTitle.textContent = "증거 정황";
-    evidenceSection.appendChild(evidenceTitle);
-    evidenceSection.appendChild(createClueList(profile.evidence));
-    container.appendChild(evidenceSection);
-  }
-
-  if (profile.alibis.length > 0) {
-    const alibiSection = document.createElement("div");
-    alibiSection.className = "profile-section";
-    const alibiTitle = document.createElement("h4");
-    alibiTitle.textContent = "추천 변명";
-    alibiSection.appendChild(alibiTitle);
-    alibiSection.appendChild(createClueList(profile.alibis));
-    container.appendChild(alibiSection);
-  }
-}
-
 function getUnlockedRounds(cluePackage) {
   if (!cluePackage?.rounds || !cluePackage.rounds.length) return [];
   if (cluePackage.type === "culprit") {
