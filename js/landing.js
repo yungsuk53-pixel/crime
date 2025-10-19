@@ -492,11 +492,53 @@ function handlePromptJsonParse() {
     return;
   }
   try {
-    const parsed = JSON.parse(rawText);
+    // 제어 문자 정리: JSON 문자열 내부의 제어 문자를 이스케이프
+    let cleanedText = rawText;
+    
+    // 마크다운 코드 블록 제거
+    cleanedText = cleanedText.replace(/^```json\s*/i, '').replace(/\s*```$/i, '');
+    cleanedText = cleanedText.replace(/^```\s*/i, '').replace(/\s*```$/i, '');
+    
+    // JSON 파싱 시도
+    let parsed;
+    try {
+      parsed = JSON.parse(cleanedText);
+    } catch (firstError) {
+      console.warn("1차 파싱 실패, 제어 문자 정리 시도", firstError);
+      
+      // 제어 문자를 이스케이프하여 재시도
+      // 문자열 값 내부의 제어 문자만 이스케이프 (JSON 구조는 유지)
+      cleanedText = cleanedText.replace(/"([^"\\]*(\\.[^"\\]*)*)"/g, (match) => {
+        return match
+          .replace(/\n/g, '\\n')
+          .replace(/\r/g, '\\r')
+          .replace(/\t/g, '\\t')
+          .replace(/\f/g, '\\f')
+          .replace(/\b/g, '\\b');
+      });
+      
+      parsed = JSON.parse(cleanedText);
+    }
+    
     applyScenarioDraft(parsed, "텍스트 입력");
   } catch (error) {
-    console.warn("텍스트 JSON 파싱 실패", error);
-    setBuilderStatus("JSON 구문 오류가 있습니다. 중괄호와 따옴표를 다시 확인해 주세요.", "error");
+    console.error("텍스트 JSON 파싱 실패", error);
+    console.error("오류 위치:", error.message);
+    
+    // 오류 위치 힌트 제공
+    const match = error.message.match(/position (\d+)/);
+    if (match) {
+      const pos = parseInt(match[1]);
+      const snippet = rawText.substring(Math.max(0, pos - 50), Math.min(rawText.length, pos + 50));
+      console.error("오류 근처 텍스트:", snippet);
+      console.error("오류 위치 마커:", ' '.repeat(Math.min(50, pos)) + '^');
+    }
+    
+    setBuilderStatus(
+      "JSON 구문 오류가 있습니다. 콘솔(F12)에서 상세 오류를 확인하세요. " +
+      "문자열 내부에 줄바꿈이 있다면 \\n으로 바꿔주세요.",
+      "error"
+    );
     draftScenario = null;
     displayDraftScenario(null);
   }
