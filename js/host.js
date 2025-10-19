@@ -2726,8 +2726,29 @@ function renderHostCharacterList() {
       ${assignedPlayer ? `<div class="character-card__player">플레이어: ${assignedPlayer.name}</div>` : '<div class="character-card__player">미배정</div>'}
       <div class="character-card__briefing">${persona.briefing ? persona.briefing.substring(0, 80) + '...' : ""}</div>
     `;
+    
+    // 클릭 이벤트 추가
+    card.style.cursor = "pointer";
+    card.addEventListener("click", () => {
+      showHostCharacterModal(persona, assignedPlayer);
+    });
+    
     dom.hostCharacterList.appendChild(card);
   });
+}
+
+function showHostCharacterModal(persona, assignedPlayer) {
+  // 간단한 alert 대신 토스트로 정보 표시
+  const playerInfo = assignedPlayer ? `\n담당 플레이어: ${assignedPlayer.name}` : "\n담당 플레이어: 미배정";
+  const info = `
+캐릭터: ${persona.name}
+직함: ${persona.title || "없음"}${playerInfo}
+
+프로필:
+${persona.briefing || persona.summary || "정보가 없습니다."}
+  `.trim();
+  
+  alert(info);
 }
 
 async function resetPlayerReadiness(stageKey) {
