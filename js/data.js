@@ -693,6 +693,34 @@ export const SCENARIO_GENERATION_GUIDE = `
    - 백슬래시: \\\\
    - 예: "설명": "첫 번째 줄\\n두 번째 줄"
 
+## 🎨 시각적 증거 필수 요구사항
+
+**매우 중요: 시각적 증거는 게임의 핵심입니다!**
+
+### HTML 스타일링 절대 규칙:
+1. **반드시 인라인 스타일 사용** - style 속성에 모든 CSS 포함
+2. **명확한 색상 대비** - 배경과 텍스트가 확실히 구분되게
+3. **충분한 크기와 패딩** - 너무 작거나 빡빡하지 않게
+4. **실제 문서처럼 디자인** - 영수증은 영수증처럼, 메시지는 메시지처럼
+5. **중요 정보는 강조** - 굵게, 색상, 크기로 눈에 띄게
+6. **box-shadow와 border 사용** - 입체감과 구분감 표현
+
+### ❌ 절대 하지 말 것:
+- 회색 배경에 회색 글씨 같은 저대비 조합
+- 클래스명만 있고 스타일이 없는 HTML
+- 너무 작은 폰트 (12px 미만)
+- 단순한 텍스트만 나열
+- 패딩이나 여백이 없는 답답한 레이아웃
+
+### ✅ 반드시 포함할 것:
+- 배경색 (background)
+- 테두리 (border)
+- 패딩 (padding: 15px 이상)
+- 글꼴 크기 (font-size: 13px 이상)
+- 색상 강조 (중요 부분은 다른 색)
+- 그림자 효과 (box-shadow)
+- 최대 너비 (max-width: 300-400px)
+
 ## 🎮 게임 진행 시스템 이해
 
 ### 단계별 흐름
@@ -887,61 +915,133 @@ export const SCENARIO_GENERATION_GUIDE = `
 
 ## 🎨 시각적 증거 생성 가이드
 
+⚠️ **중요: HTML 스타일링 필수 규칙**
+
+1. **인라인 스타일만 사용** - 외부 CSS는 적용되지 않음
+2. **명확한 배경색과 테두리** - 증거가 눈에 띄도록 강조
+3. **충분한 패딩과 여백** - 가독성을 위해 공간 확보
+4. **적절한 폰트 크기** - 최소 12px 이상
+5. **색상 대비** - 텍스트와 배경의 명확한 구분
+6. **최대 너비 제한** - max-width: 400px 이하 권장
+
+**❌ 피해야 할 것:**
+- 투명하거나 너무 밝은 배경색
+- 회색 계열의 단조로운 디자인
+- 너무 작은 폰트나 간격
+- 클래스명만 지정하고 스타일 미지정
+- 복잡한 SVG나 애니메이션
+
+**✅ 권장 사항:**
+- 문서 타입에 맞는 명확한 시각적 특징 (영수증 → 영수증처럼 보이게)
+- 중요 정보는 굵게 또는 색상 강조
+- 적절한 아이콘/이모지 사용 (📧, 📱, 🔒 등)
+- 테두리와 그림자로 입체감 표현
+
 ### 증거 타입별 HTML 템플릿
 
-#### 1. 영수증/거래 내역
+#### 1. 영수증/거래 내역 ✅ 권장 스타일
 \`\`\`html
-<div style="font-family: 'Courier New', monospace; background: #fff; padding: 20px; border: 1px solid #000; max-width: 300px;">
-  <div style="text-align: center; font-weight: bold; margin-bottom: 10px;">상호명</div>
-  <div style="border-top: 1px dashed #000; padding-top: 10px;">
-    <div>거래일시: 2024-10-19 18:45</div>
-    <div>항목: 커피 2잔</div>
-    <div>금액: 8,000원</div>
+<div style="font-family: 'Courier New', monospace; background: linear-gradient(to bottom, #fff 0%, #f9f9f9 100%); padding: 25px; border: 2px solid #333; max-width: 320px; box-shadow: 2px 2px 8px rgba(0,0,0,0.1);">
+  <div style="text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px;">🏪 상호명</div>
+  <div style="border-top: 1px dashed #666; padding-top: 10px;">
+    <div style="margin: 8px 0; font-size: 14px;">거래일시: 2024-10-19 18:45</div>
+    <div style="margin: 8px 0; font-size: 14px;">항목: 커피 2잔</div>
+    <div style="margin: 8px 0; font-weight: bold; font-size: 16px; border-top: 1px solid #000; padding-top: 8px;">합계: 8,000원</div>
   </div>
 </div>
 \`\`\`
 
-#### 2. 문자 메시지
+#### 2. 문자 메시지/카카오톡 ✅ 권장 스타일
 \`\`\`html
-<div style="background: #f0f0f0; padding: 15px; border-radius: 10px; max-width: 280px;">
-  <div style="background: #dcf8c6; padding: 10px; border-radius: 7px; margin-bottom: 5px;">
-    <div style="font-size: 12px; color: #666;">발신: 홍길동</div>
-    <div>오늘 회의 꼭 참석해주세요</div>
-    <div style="text-align: right; font-size: 11px; color: #999;">18:30</div>
+<div style="background: #b2c7d9; padding: 20px; border-radius: 12px; max-width: 320px; box-shadow: 0 2px 10px rgba(0,0,0,0.15);">
+  <div style="background: #ffffff; padding: 12px 15px; border-radius: 10px; margin-bottom: 8px; position: relative;">
+    <div style="font-size: 11px; color: #888; margin-bottom: 5px; font-weight: bold;">📱 홍길동</div>
+    <div style="font-size: 14px; line-height: 1.5; color: #000;">오늘 회의 꼭 참석해주세요. 중요한 안건이 있습니다.</div>
+    <div style="text-align: right; font-size: 10px; color: #999; margin-top: 8px;">오후 6:30</div>
+  </div>
+  <div style="background: #ffe400; padding: 12px 15px; border-radius: 10px; margin-left: 30px;">
+    <div style="font-size: 11px; color: #888; margin-bottom: 5px; font-weight: bold;">나</div>
+    <div style="font-size: 14px; line-height: 1.5; color: #000;">알겠습니다.</div>
+    <div style="text-align: right; font-size: 10px; color: #999; margin-top: 8px;">오후 6:32</div>
   </div>
 </div>
 \`\`\`
 
-#### 3. 일정표/타임라인
+#### 3. 일정표/타임라인 ✅ 권장 스타일
 \`\`\`html
-<table style="border-collapse: collapse; width: 100%; font-size: 14px;">
-  <tr style="background: #333; color: #fff;">
-    <th style="padding: 8px; border: 1px solid #666;">시간</th>
-    <th style="padding: 8px; border: 1px solid #666;">일정</th>
-  </tr>
-  <tr>
-    <td style="padding: 8px; border: 1px solid #ddd;">18:00</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">회의실 입장</td>
-  </tr>
-</table>
-\`\`\`
-
-#### 4. 편지/메모
-\`\`\`html
-<div style="background: #fffacd; padding: 20px; border-left: 3px solid #f4a460; font-family: 'Nanum Pen Script', cursive;">
-  <p style="margin: 0 0 10px 0;">친애하는 ○○에게,</p>
-  <p style="margin: 10px 0;">편지 내용...</p>
-  <p style="text-align: right; margin-top: 20px;">- 발신인</p>
+<div style="background: #fff; border: 2px solid #4CAF50; border-radius: 8px; overflow: hidden; max-width: 400px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+  <div style="background: #4CAF50; color: #fff; padding: 12px; font-weight: bold; font-size: 16px;">📅 일정표</div>
+  <table style="border-collapse: collapse; width: 100%; font-size: 14px;">
+    <tr style="background: #2c3e50; color: #fff;">
+      <th style="padding: 12px; border: 1px solid #34495e; text-align: left; font-size: 13px;">시간</th>
+      <th style="padding: 12px; border: 1px solid #34495e; text-align: left; font-size: 13px;">일정</th>
+    </tr>
+    <tr style="background: #fff;">
+      <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">18:00</td>
+      <td style="padding: 10px; border: 1px solid #ddd;">회의실 입장</td>
+    </tr>
+    <tr style="background: #f9f9f9;">
+      <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">19:00</td>
+      <td style="padding: 10px; border: 1px solid #ddd;">중요 회의 시작</td>
+    </tr>
+  </table>
 </div>
 \`\`\`
 
-#### 5. CCTV 타임스탬프
+#### 4. 편지/메모 ✅ 권장 스타일
 \`\`\`html
-<div style="background: #000; color: #0f0; font-family: monospace; padding: 15px; border: 2px solid #333;">
-  <div style="margin-bottom: 5px;">📹 CAMERA 01</div>
-  <div>DATE: 2024-10-19</div>
-  <div>TIME: 18:45:23</div>
-  <div style="margin-top: 10px; color: #ff0;">⚠️ MOTION DETECTED</div>
+<div style="background: #fffbf0; padding: 25px; border: 3px double #8b7355; max-width: 350px; box-shadow: 3px 3px 10px rgba(0,0,0,0.2); font-family: 'Georgia', serif;">
+  <div style="text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 15px; color: #5d4037;">✉️ 편지</div>
+  <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; color: #333;">친애하는 ○○에게,</p>
+  <p style="margin: 12px 0; font-size: 14px; line-height: 1.8; color: #444;">이 편지를 읽을 때쯤이면 모든 것이 밝혀졌을 것입니다. 진실은...</p>
+  <p style="text-align: right; margin-top: 20px; font-size: 14px; font-style: italic; color: #666;">- 발신인 이름</p>
+</div>
+\`\`\`
+
+#### 5. CCTV/보안 기록 ✅ 권장 스타일
+\`\`\`html
+<div style="background: #1a1a1a; color: #00ff00; font-family: 'Courier New', monospace; padding: 20px; border: 3px solid #333; max-width: 350px; box-shadow: 0 0 20px rgba(0,255,0,0.3);">
+  <div style="border-bottom: 2px solid #00ff00; padding-bottom: 10px; margin-bottom: 15px;">
+    <div style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">📹 CAMERA 01 - LOBBY</div>
+    <div style="font-size: 12px; color: #0f0;">RECORDING</div>
+  </div>
+  <div style="font-size: 14px; line-height: 1.8;">
+    <div>DATE: 2024-10-19</div>
+    <div>TIME: 18:45:23</div>
+    <div>LOCATION: 1F ENTRANCE</div>
+  </div>
+  <div style="margin-top: 15px; padding: 10px; background: #ff0000; color: #fff; font-weight: bold; text-align: center; border-radius: 4px;">
+    ⚠️ MOTION DETECTED
+  </div>
+</div>
+\`\`\`
+
+#### 6. 통화 기록/로그 ✅ 권장 스타일
+\`\`\`html
+<div style="background: #fff; border: 2px solid #2196F3; border-radius: 10px; padding: 20px; max-width: 350px; box-shadow: 0 3px 10px rgba(0,0,0,0.1);">
+  <div style="background: #2196F3; color: #fff; padding: 12px; margin: -20px -20px 15px -20px; border-radius: 8px 8px 0 0; font-weight: bold; font-size: 16px;">
+    📞 통화 기록
+  </div>
+  <div style="padding: 12px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <div style="font-weight: bold; font-size: 15px; color: #333;">홍길동</div>
+      <div style="font-size: 12px; color: #666; margin-top: 4px;">발신 통화</div>
+    </div>
+    <div style="text-align: right;">
+      <div style="font-size: 14px; color: #2196F3; font-weight: bold;">18:45</div>
+      <div style="font-size: 12px; color: #999; margin-top: 4px;">5분 32초</div>
+    </div>
+  </div>
+  <div style="padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <div style="font-weight: bold; font-size: 15px; color: #333;">이영희</div>
+      <div style="font-size: 12px; color: #666; margin-top: 4px;">수신 통화</div>
+    </div>
+    <div style="text-align: right;">
+      <div style="font-size: 14px; color: #4CAF50; font-weight: bold;">19:10</div>
+      <div style="font-size: 12px; color: #999; margin-top: 4px;">2분 15초</div>
+    </div>
+  </div>
 </div>
 \`\`\`
 
@@ -1043,11 +1143,16 @@ export const SCENARIO_GENERATION_GUIDE = `
 - [ ] 단서들이 서로 연결되어 있는가?
 - [ ] 시각적 증거가 최소 3개 이상 포함되어 있는가?
 
-### 5. 시각적 증거
+### 5. 시각적 증거 (매우 중요!)
 - [ ] 각 증거가 사건 해결에 실질적으로 기여하는가?
-- [ ] HTML 코드가 실행 가능하고 깔끔한가?
-- [ ] 이미지 프롬프트가 충분히 상세한가?
-- [ ] 증거 타입이 다양한가? (영수증, 메시지, 타임라인 등)
+- [ ] HTML에 인라인 스타일이 완전히 포함되어 있는가? (클래스명만 있으면 안됨)
+- [ ] 배경색, 테두리, 패딩, 폰트 크기가 모두 명시되어 있는가?
+- [ ] 색상 대비가 충분한가? (회색 배경에 회색 글씨 금지)
+- [ ] 증거가 시각적으로 실제 문서처럼 보이는가?
+- [ ] 중요 정보가 굵게, 색상, 크기로 강조되어 있는가?
+- [ ] box-shadow나 border로 입체감이 표현되어 있는가?
+- [ ] 증거 타입이 다양한가? (영수증, 메시지, 타임라인, CCTV 등)
+- [ ] 최소 3개 이상의 시각적 증거가 포함되어 있는가?
 
 ### 6. 게임 플레이
 - [ ] 브리핑 단계에서 충분한 정보를 제공하는가?
