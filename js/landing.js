@@ -1,4 +1,4 @@
-import { scenarios, formatPlayerRange, registerScenarios } from "./data.js";
+import { scenarios, formatPlayerRange, registerScenarios, SCENARIO_GENERATION_GUIDE } from "./data.js";
 import { fetchRemoteScenarios, saveScenarioSet } from "./firebase.js";
 
 let draftScenario = null;
@@ -262,91 +262,89 @@ function applyScenarioDraft(rawScenario, sourceLabel = "업로드") {
 function buildPromptTemplate() {
   return {
     instructions:
-      "선택한 주제에 맞춰 'scenario' 객체만 채워서 유효한 JSON으로 응답하세요. 모든 텍스트는 한국어로 작성하고, 배열은 최소 2개 이상의 항목을 제공합니다. 최소 한 명의 탐정, 한 명의 범인, 세 명 이상의 용의자를 정의합니다.",
-    notes:
-      "각 필드는 온라인 추리 세션에서 사용됩니다. 특히 roles 섹션은 플레이어 단서 카드로 직접 사용되므로 상세한 truths / misdirections / prompts / exposed 항목을 포함해야 합니다.",
+      "아래 시나리오 구조에 맞춰 고품질 범죄 추리 게임을 만들어주세요. visual 증거를 포함하여 HTML 코드 또는 이미지 생성 프롬프트를 제공하세요.",
     scenario: {
-      id: "custom-theme-identifier",
-      title: "<사건 제목>",
-      tagline: "<한 줄 소개>",
-      difficulty: "<난이도 예: 중급>",
-      tone: "<분위기 예: 서스펜스>",
-      duration: "<예: 120분>",
+      id: "unique-kebab-case-id",
+      title: "매력적이고 기억에 남는 제목",
+      tagline: "30자 이내의 극적인 한 줄 소개",
+      difficulty: "초급|중급|고급",
+      tone: "장르/분위기 (예: 네오 누아르, 미스터리 코미디)",
+      duration: "120분",
       playerRange: {
         min: 4,
         max: 7
       },
-      summary: "<사건 요약>",
+      summary: "사건의 배경, 상황, 핵심 미스터리를 포함한 200자 내외의 요약",
       motifs: [
-        "<주제와 관련된 주요 모티프>",
-        "<두 번째 모티프>"
+        "이야기를 특별하게 만드는 독특한 요소",
+        "플레이어의 흥미를 끄는 설정"
       ],
       conflicts: [
-        "<플레이어가 토론해야 하는 갈등 질문>",
-        "<두 번째 갈등 질문>"
+        "등장인물 간의 이해관계 충돌",
+        "사건 해결의 핵심이 되는 질문"
       ],
       prompts: [
-        "<토론을 유도할 질문>",
-        "<두 번째 질문>"
+        "플레이어가 토론에서 다뤄야 할 핵심 질문",
+        "범인을 찾기 위해 반드시 해결해야 할 의문"
       ],
       timeline: [
-        { "time": "18:00", "description": "<사건 전개 이벤트>" },
-        { "time": "18:30", "description": "<추가 이벤트>" }
+        { time: "HH:MM", description: "사건 전후의 중요한 시간대별 사건" }
       ],
       evidence: {
         physical: [
-          {
-            display: "<물적 증거 설명>",
-            time: "<발생 시간 예: 14:00>",
-            visualElements: ["<시각적 요소 예: 사진, 영수증>"]
-          }
+          "구체적인 물리적 증거 (예: 찢어진 영수증, 특정 위치의 지문)"
         ],
         digital: [
+          "디지털 증거 (예: 문자 메시지, CCTV 타임스탬프, 통화 기록)"
+        ],
+        visual: [
           {
-            display: "<디지털 증거 설명>",
-            time: "<발생 시간>",
-            visualElements: ["<시각적 요소 예: 스크린샷, 로그>"]
+            type: "image|document|chart|receipt|letter|message|map|diagram",
+            title: "증거 이름",
+            description: "증거 설명",
+            html: "<!-- 시각적 증거를 표현할 HTML 코드 -->",
+            imagePrompt: "이미지 생성 AI를 위한 상세한 프롬프트 (선택사항)"
           }
         ]
       },
       characters: [
         {
-          name: "<이름>",
-          title: "<직함>",
-          description: "<배경 설명>"
+          name: "캐릭터 이름",
+          title: "구체적인 직책/역할",
+          description: "이 캐릭터의 배경과 사건과의 관계"
         }
       ],
       roles: {
         detective: [
           {
-            name: "<탐정 이름>",
-            title: "<탐정 직함>",
-            briefing: "<탐정 브리핑>",
-            truths: ["<핵심 단서>", "<추가 단서>"],
-            misdirections: ["<혼란 정보>"],
-            prompts: ["<토론 유도 질문>"]
+            name: "탐정 이름",
+            title: "탐정 직함",
+            briefing: "플레이어에게 주어지는 역할 설명 및 목표",
+            truths: ["구체적이고 확인 가능한 정보", "사건 해결에 도움이 되는 결정적 단서"],
+            misdirections: ["다른 사람을 의심하게 만드는 정보"],
+            prompts: ["이 단계에서 취해야 할 구체적 행동"]
           }
         ],
         culprit: [
           {
-            name: "<범인 이름>",
-            title: "<범인 직함>",
-            briefing: "<범인 브리핑>",
-            truths: ["<범인이 아는 진실>", "<추가 진실>"],
-            misdirections: ["<흘릴 정보>"],
-            prompts: ["<범인이 제시할 토론 질문>"],
-            exposed: ["<들키면 위험한 단서>"]
+            name: "범인 이름",
+            title: "범인 직함",
+            briefing: "범인 브리핑 및 목표",
+            truths: ["범인이 알고 있는 진실"],
+            misdirections: ["다른 사람을 의심하게 만드는 정보", "자신의 알리바이를 강화하는 정보"],
+            prompts: ["다른 플레이어에게 물어봐야 할 질문"],
+            exposed: ["들킬 위험이 있는 약점이나 증거"]
           }
         ],
         suspects: [
           {
-            name: "<용의자 이름>",
-            title: "<용의자 직함>",
-            summary: "<용의자 요약>",
-            briefing: "<용의자 브리핑>",
-            truths: ["<용의자가 가진 진실>", "<추가 진실>"],
-            misdirections: ["<혼란 정보>"],
-            prompts: ["<토론을 유도할 질문>"]
+            name: "용의자 이름",
+            title: "용의자 직함",
+            summary: "용의자 배경",
+            briefing: "용의자 브리핑",
+            truths: ["이 캐릭터가 알고 있는 진실"],
+            misdirections: ["다른 사람을 의심하게 만드는 정보"],
+            prompts: ["토론을 유도할 질문"]
           }
         ]
       }
@@ -355,17 +353,8 @@ function buildPromptTemplate() {
 }
 
 function buildPromptGuide() {
-  return [
-    "당신은 온라인 추리 게임을 위한 사건 세트를 작성하는 시나리오 전문가입니다.",
-    "사용자가 제시한 주제만 입력하면 되도록 아래 조건을 모두 충족하는 JSON을 반환하세요.",
-    "- 필수 필드: id, title, tagline, difficulty, tone, duration, playerRange(min/max), summary, motifs, conflicts, prompts, timeline(시간 + 설명), evidence.physical/digital (각각 display, time, visualElements 포함), characters, roles.detective/culprit/suspects.",
-    "- roles 섹션은 각 인물에 대한 truths / misdirections / prompts / exposed(범인만) 배열을 포함해야 합니다.",
-    "- 모든 텍스트는 한국어로 작성하고, 배열은 공백 요소 없이 최소 2개 이상 채웁니다.",
-    "- id는 소문자-케밥-케이스로 작성합니다.",
-    "- timeline은 사건의 흐름을 4~6개 단계로 구성합니다.",
-    "응답 형식: JSON 단일 객체로 반환하며, 불필요한 설명을 추가하지 마세요.",
-    "템플릿 예시는 아래 JSON을 참고하세요."
-  ].join("\n");
+  // data.js에서 가져온 고품질 프롬프트 가이드 사용
+  return SCENARIO_GENERATION_GUIDE;
 }
 
 function downloadPromptTemplate() {
