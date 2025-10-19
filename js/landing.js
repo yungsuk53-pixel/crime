@@ -596,6 +596,36 @@ function handlePromptJsonClear() {
   }
 }
 
+function applyUserRequirementsToPrompt() {
+  const guideField = document.getElementById("promptGuide");
+  if (!guideField) return;
+  
+  // 사용자 입력 필드 읽기
+  const userTheme = document.getElementById("userTheme")?.value.trim();
+  const userPlayerCount = document.getElementById("userPlayerCount")?.value.trim();
+  const userRequirements = document.getElementById("userRequirements")?.value.trim();
+  
+  // 입력이 없으면 경고
+  if (!userTheme && !userPlayerCount && !userRequirements) {
+    setBuilderStatus("적용할 요구사항을 먼저 입력해 주세요.", "warn");
+    return;
+  }
+  
+  // 프롬프트 업데이트
+  guideField.value = buildPromptGuide();
+  
+  // 성공 메시지
+  let appliedItems = [];
+  if (userTheme) appliedItems.push("주제/배경");
+  if (userPlayerCount) appliedItems.push("추천 인원");
+  if (userRequirements) appliedItems.push("특별 요구사항");
+  
+  setBuilderStatus(
+    `✅ 프롬프트에 적용되었습니다: ${appliedItems.join(", ")}. 이제 복사하거나 다운로드하여 AI에게 전달하세요.`,
+    "success"
+  );
+}
+
 async function handleSaveScenario() {
   if (!draftScenario) {
     setBuilderStatus("먼저 프롬프트 JSON을 업로드해 주세요.", "warn");
@@ -659,6 +689,7 @@ function setupScenarioBuilder() {
   const copyBtn = document.getElementById("copyPromptGuide");
   const parseBtn = document.getElementById("parsePromptJsonBtn");
   const clearBtn = document.getElementById("clearPromptJsonBtn");
+  const applyRequirementsBtn = document.getElementById("applyUserRequirements");
 
   if (downloadBtn) {
     downloadBtn.addEventListener("click", downloadPromptTemplate);
@@ -680,6 +711,9 @@ function setupScenarioBuilder() {
   }
   if (clearBtn) {
     clearBtn.addEventListener("click", handlePromptJsonClear);
+  }
+  if (applyRequirementsBtn) {
+    applyRequirementsBtn.addEventListener("click", applyUserRequirementsToPrompt);
   }
   displayDraftScenario(null);
   setBuilderStatus("템플릿을 다운로드하거나 JSON을 붙여넣어 새로운 사건 세트를 등록하세요.");
