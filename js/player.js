@@ -139,11 +139,16 @@ function renderRoster(roster = []) {
 
       const nameSpan = document.createElement("span");
       nameSpan.className = "player-list__name";
-      nameSpan.textContent = player.name;
+      // 역할이 있으면 "이름(역할)" 형식으로 표시
+      if (player.role && !player.is_host && !player.is_bot) {
+        nameSpan.textContent = `${player.name}(${player.role})`;
+      } else {
+        nameSpan.textContent = player.name;
+      }
 
       const roleSpan = document.createElement("span");
       roleSpan.className = "player-list__role";
-      roleSpan.textContent = player.is_host ? "호스트" : player.is_bot ? "봇" : player.role || "참가자";
+      roleSpan.textContent = player.is_host ? "호스트" : player.is_bot ? "봇" : "참가자";
 
       item.append(nameSpan, roleSpan);
       list.appendChild(item);
@@ -197,6 +202,56 @@ function renderList(element, items = []) {
     const li = document.createElement("li");
     li.textContent = typeof item === 'string' ? item : item.display || item;
     element.appendChild(li);
+  });
+}
+
+function renderVisualEvidence(element, visualItems = []) {
+  if (!element) return;
+  element.innerHTML = "";
+  if (!visualItems.length) return;
+  
+  visualItems.forEach((item) => {
+    const container = document.createElement("div");
+    container.className = "visual-evidence-item";
+    container.style.marginBottom = "20px";
+    
+    if (item.title) {
+      const title = document.createElement("h4");
+      title.textContent = item.title;
+      title.style.marginBottom = "10px";
+      container.appendChild(title);
+    }
+    
+    if (item.description) {
+      const desc = document.createElement("p");
+      desc.textContent = item.description;
+      desc.style.fontSize = "14px";
+      desc.style.color = "#666";
+      desc.style.marginBottom = "10px";
+      container.appendChild(desc);
+    }
+    
+    if (item.html) {
+      const htmlContainer = document.createElement("div");
+      htmlContainer.className = "visual-evidence-content";
+      htmlContainer.innerHTML = item.html;
+      container.appendChild(htmlContainer);
+    }
+    
+    if (item.imagePrompt && !item.html) {
+      const promptInfo = document.createElement("div");
+      promptInfo.style.padding = "15px";
+      promptInfo.style.background = "#f5f5f5";
+      promptInfo.style.border = "1px dashed #999";
+      promptInfo.style.borderRadius = "4px";
+      promptInfo.innerHTML = `
+        <strong>🎨 이미지 생성 프롬프트:</strong><br>
+        <em style="font-size: 13px; color: #555;">${item.imagePrompt}</em>
+      `;
+      container.appendChild(promptInfo);
+    }
+    
+    element.appendChild(container);
   });
 }
 
@@ -969,6 +1024,7 @@ function renderScenario(scenario) {
   renderTimeline(dom.scenarioTimeline, scenario.timeline);
   renderList(dom.evidencePhysical, scenario.evidence.physical);
   renderList(dom.evidenceDigital, scenario.evidence.digital);
+  renderVisualEvidence(dom.evidencePhysical, scenario.evidence.visual);
 }
 
 function toggleChatAvailability(enabled) {
@@ -1466,7 +1522,7 @@ function populateVoteOptions() {
   const existingValue = dom.voteTarget.value;
   dom.voteTarget.innerHTML = "<option value=\"\">-- 대상을 선택하세요 --</option>";
   state.roster
-    .filter((player) => !player.is_bot && player.id !== state.playerRecordId)
+    .filter((player) => player.id !== state.playerRecordId)
     .forEach((player) => {
       const option = document.createElement("option");
       option.value = player.id;

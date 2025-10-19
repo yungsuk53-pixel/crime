@@ -554,6 +554,56 @@ function renderList(element, items = []) {
   });
 }
 
+function renderVisualEvidence(element, visualItems = []) {
+  if (!element) return;
+  element.innerHTML = "";
+  if (!visualItems.length) return;
+  
+  visualItems.forEach((item) => {
+    const container = document.createElement("div");
+    container.className = "visual-evidence-item";
+    container.style.marginBottom = "20px";
+    
+    if (item.title) {
+      const title = document.createElement("h4");
+      title.textContent = item.title;
+      title.style.marginBottom = "10px";
+      container.appendChild(title);
+    }
+    
+    if (item.description) {
+      const desc = document.createElement("p");
+      desc.textContent = item.description;
+      desc.style.fontSize = "14px";
+      desc.style.color = "#666";
+      desc.style.marginBottom = "10px";
+      container.appendChild(desc);
+    }
+    
+    if (item.html) {
+      const htmlContainer = document.createElement("div");
+      htmlContainer.className = "visual-evidence-content";
+      htmlContainer.innerHTML = item.html;
+      container.appendChild(htmlContainer);
+    }
+    
+    if (item.imagePrompt && !item.html) {
+      const promptInfo = document.createElement("div");
+      promptInfo.style.padding = "15px";
+      promptInfo.style.background = "#f5f5f5";
+      promptInfo.style.border = "1px dashed #999";
+      promptInfo.style.borderRadius = "4px";
+      promptInfo.innerHTML = `
+        <strong>🎨 이미지 생성 프롬프트:</strong><br>
+        <em style="font-size: 13px; color: #555;">${item.imagePrompt}</em>
+      `;
+      container.appendChild(promptInfo);
+    }
+    
+    element.appendChild(container);
+  });
+}
+
 function renderTimeline(element, entries = []) {
   element.innerHTML = "";
   if (!entries.length) {
@@ -815,6 +865,14 @@ async function transitionToStage(stageKey, options = {}) {
   updateVoteStatus();
   updateStageTimerDisplay();
   await resetPlayerReadiness(stageKey);
+  
+  // 토론 단계로 전환 시 봇들이 단서 공유
+  if (stageKey === "discussion") {
+    setTimeout(() => {
+      sendBotClueMessages();
+    }, 2000); // 2초 후 봇 메시지 전송
+  }
+  
   if (!options.silent) {
     showToast(`현재 단계가 '${stageLabels[stageKey] || stageKey}'(으)로 전환되었습니다.`, "info");
   }
@@ -874,6 +932,7 @@ function renderScenario(scenario) {
   renderList(dom.scenarioConflicts, scenario.conflicts);
   renderList(dom.evidencePhysical, scenario.evidence.physical);
   renderList(dom.evidenceDigital, scenario.evidence.digital);
+  renderVisualEvidence(dom.evidencePhysical, scenario.evidence.visual);
   renderList(dom.investigationPrompts, scenario.prompts);
   renderTimeline(dom.scenarioTimeline, scenario.timeline);
   renderCharacters(scenario.characters || scenario.roles?.suspects || []);
@@ -886,6 +945,7 @@ function renderScenario(scenario) {
   renderTimeline(dom.gameScenarioTimeline, scenario.timeline);
   renderList(dom.gameEvidencePhysical, scenario.evidence.physical);
   renderList(dom.gameEvidenceDigital, scenario.evidence.digital);
+  renderVisualEvidence(dom.gameEvidencePhysical, scenario.evidence.visual);
 
   if (scenarioChanged) {
     resetAssignmentsOnScenarioChange();
@@ -2551,6 +2611,21 @@ function updateVoteStatus() {
   const eligible = state.players.filter((player) => !player.is_bot).length;
   const submitted = state.players.filter((player) => player.has_voted).length;
   dom.voteStatus.innerHTML = `<strong>투표 진행 상황</strong><br>${submitted} / ${eligible} 명 투표 완료`;
+  
+  // 모든 플레이어가 투표를 완료하면 자동으로 결과 단계로 전환
+  if (eligible > 0 && submitted >= eligible && !state.autoVoteCompleteTriggered) {
+    state.autoVoteCompleteTriggered = true;
+    setTimeout(async () => {
+      try {
+        await transitionToStage("result");
+        showToast("모든 투표가 완료되어 결과 단계로 전환되었습니다.", "success");
+      } catch (error) {
+        console.error("자동 투표 완료 처리 실패:", error);
+      } finally {
+        state.autoVoteCompleteTriggered = false;
+      }
+    }, 1500);
+  }
 }
 
 async function handleResetPlayers() {
@@ -2597,6 +2672,61 @@ function shuffle(array) {
     [copy[i], copy[j]] = [copy[j], copy[i]];
   }
   return copy;
+}
+
+async function sendBotClueMessages() {
+  if (!state.activeSession || state.activeSession.stage !== "discussion") return;
+  
+  const bots = state.players.filter(p => p.is_bot && p.role);
+  
+  for (const bot of bots) {
+    try {
+      // 봇의 단서 정보 가져오기
+      const scenario = state.activeScenario;
+      if (!scenario) continue;
+      
+      const roleData = scenario.roles?.find(r => r.persona === bot.role);
+      if (!roleData || !roleData.clues) continue;
+      
+      // 단서 중 하나를 랜덤으로 선택
+      const cluePackage = roleData.clues;
+      let clueToShare = null;
+      
+      // truths가 있으면 우선적으로 공유
+      if (cluePackage.truths && cluePackage.truths.length > 0) {
+        clueToShare = cluePackage.truths[Math.floor(Math.random() * cluePackage.truths.length)];
+      } else if (cluePackage.rounds && cluePackage.rounds.length > 0) {
+        // rounds에서 truths 찾기
+        for (const round of cluePackage.rounds) {
+          if (round.truths && round.truths.length > 0) {
+            clueToShare = round.truths[Math.floor(Math.random() * round.truths.length)];
+            break;
+          }
+        }
+      }
+      
+      if (clueToShare) {
+        // 채팅 메시지로 전송
+        await api.create("chat_messages", {
+          session_code: state.activeSession.code,
+          player_name: bot.name,
+          role: bot.role,
+          message: clueToShare,
+          sent_at: new Date().toISOString()
+        });
+        
+        // 랜덤 딜레이 추가 (1-3초)
+        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+      }
+    } catch (error) {
+      console.error(`봇 ${bot.name} 단서 공유 실패:`, error);
+    }
+  }
+  
+  // 채팅 새로고침
+  if (state.chatSessionCode) {
+    loadChatMessages(state.chatSessionCode);
+  }
 }
 
 function ensureChatPolling(sessionCode) {

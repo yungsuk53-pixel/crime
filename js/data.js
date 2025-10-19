@@ -105,14 +105,34 @@ export const scenarios = [
     ],
     evidence: {
       physical: [
-        { display: "무대 장치용 와이어가 절단된 흔적", time: "19:45", visualElements: ["와이어 사진"] },
-        { display: "피해자의 대본에서 찢겨나간 마지막 장면의 페이지", time: "19:40", visualElements: ["대본 페이지 사진"] },
-        { display: "백스테이지 열쇠가 한 개 분실되어 보안 캐비넷이 강제로 열림", time: "19:50", visualElements: ["열쇠 사진", "캐비넷 사진"] }
+        "무대 장치용 와이어가 절단된 흔적",
+        "피해자의 대본에서 찢겨나간 마지막 장면의 페이지",
+        "백스테이지 열쇠가 한 개 분실되어 보안 캐비넷이 강제로 열림"
       ],
       digital: [
-        { display: "무대 감시 카메라 19:20~19:30 공백 구간", time: "19:20-19:30", visualElements: ["카메라 로그 스크린샷"] },
-        { display: "피해자 휴대전화 메신저에 삭제된 음성 메시지", time: "19:10", visualElements: ["메신저 스크린샷"] },
-        { display: "스트리밍 서버 로그에서 비인가 접속 시도 2회", time: "19:35", visualElements: ["서버 로그 스크린샷"] }
+        "무대 감시 카메라 19:20~19:30 공백 구간",
+        "피해자 휴대전화 메신저에 삭제된 음성 메시지",
+        "스트리밍 서버 로그에서 비인가 접속 시도 2회"
+      ],
+      visual: [
+        {
+          type: "message",
+          title: "문자 메시지 기록",
+          description: "피해자가 커튼콜 직전 문지후에게 보낸 메시지",
+          html: "<div style='background: #f0f0f0; padding: 15px; border-radius: 10px; max-width: 300px; font-family: -apple-system, sans-serif;'><div style='background: #dcf8c6; padding: 12px; border-radius: 7px; margin-bottom: 8px;'><div style='font-size: 11px; color: #666; margin-bottom: 4px;'>발신: 한서율</div><div style='font-size: 14px;'>지후야, 대타 준비해둬. 내가 무리한 것 같아.</div><div style='text-align: right; font-size: 11px; color: #999; margin-top: 4px;'>19:35</div></div><div style='background: #fff; padding: 12px; border-radius: 7px;'><div style='font-size: 11px; color: #666; margin-bottom: 4px;'>수신: 문지후</div><div style='font-size: 14px;'>진짜요? 지금 말씀하시면...</div><div style='text-align: right; font-size: 11px; color: #999; margin-top: 4px;'>19:36</div></div></div>"
+        },
+        {
+          type: "document",
+          title: "안전 제어 패널 로그",
+          description: "사건 당일 무대 안전 시스템 접근 기록",
+          html: "<table style='border-collapse: collapse; width: 100%; max-width: 400px; font-size: 13px; font-family: Consolas, monospace; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1);'><thead><tr style='background: #2c3e50; color: #ecf0f1;'><th style='padding: 10px; border: 1px solid #34495e; text-align: left;'>시간</th><th style='padding: 10px; border: 1px solid #34495e; text-align: left;'>계정</th><th style='padding: 10px; border: 1px solid #34495e; text-align: left;'>동작</th></tr></thead><tbody><tr><td style='padding: 8px; border: 1px solid #ddd;'>19:25:14</td><td style='padding: 8px; border: 1px solid #ddd;'>KJDY</td><td style='padding: 8px; border: 1px solid #ddd;'>시스템 체크</td></tr><tr style='background: #fff3cd;'><td style='padding: 8px; border: 1px solid #ddd;'>19:33:42</td><td style='padding: 8px; border: 1px solid #ddd; font-weight: bold; color: #d9534f;'>BDOH</td><td style='padding: 8px; border: 1px solid #ddd; font-weight: bold;'>안전잠금 해제</td></tr><tr><td style='padding: 8px; border: 1px solid #ddd;'>19:41:03</td><td style='padding: 8px; border: 1px solid #ddd;'>KJDY</td><td style='padding: 8px; border: 1px solid #ddd;'>긴급 점검</td></tr></tbody></table>"
+        },
+        {
+          type: "receipt",
+          title: "분장실 열쇠 대여 기록",
+          description: "백스테이지 열쇠 대여 및 반납 내역",
+          html: "<div style='font-family: monospace; background: linear-gradient(to bottom, #fff 0%, #f9f9f9 100%); padding: 20px; border: 2px solid #333; max-width: 320px; box-shadow: 2px 2px 8px rgba(0,0,0,0.1);'><div style='text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px;'>🔑 백스테이지 열쇠 대여</div><div style='font-size: 13px; line-height: 1.8;'><div style='display: flex; justify-content: space-between; margin: 8px 0;'><span>대여자:</span><span style='font-weight: bold;'>최리안</span></div><div style='display: flex; justify-content: space-between; margin: 8px 0;'><span>대여 시각:</span><span>18:50</span></div><div style='display: flex; justify-content: space-between; margin: 8px 0; color: #d9534f;'><span>반납 상태:</span><span style='font-weight: bold;'>미반납</span></div><div style='border-top: 1px dashed #666; margin: 15px 0; padding-top: 10px; font-size: 11px; color: #666;'>⚠️ 열쇠 #3 분실 신고됨 (19:50)</div></div></div>"
+        }
       ]
     },
     characters: [
@@ -642,3 +662,278 @@ export function formatPlayerRange(range) {
   if (!range) return "-";
   return `${range.min} ~ ${range.max}명`;
 }
+
+// 게임 세트 생성을 위한 AI 프롬프트 가이드
+export const SCENARIO_GENERATION_GUIDE = `
+# 고품질 범죄 추리 게임 시나리오 생성 가이드
+
+## 🎮 게임 진행 시스템 이해
+
+### 단계별 흐름
+1. **lobby** (대기실) - 플레이어 입장 및 역할 배정 대기
+2. **briefing** (5분) - 사건 개요 및 역할 확인
+3. **clue_a** (6분) - 1차 단서 공개 및 개인 분석
+4. **discussion_a** (8분) - 1차 토론 (봇이 자동으로 단서 공유)
+5. **clue_b** (6분) - 2차 단서 공개
+6. **discussion_b** (8분) - 2차 토론
+7. **clue_c** (6분) - 3차 단서 공개 (결정적 증거)
+8. **final_discussion** (9분) - 최종 토론 및 추리
+9. **voting** (3분) - 범인 투표 (전원 투표 완료 시 자동 종료)
+10. **result** - 결과 발표 및 승자 결정
+
+### 핵심 메커니즘
+- **역할 배정**: 각 플레이어는 고유한 persona(캐릭터)를 받음
+- **정보 비대칭**: 각자 다른 단서와 알리바이를 가짐
+- **점진적 공개**: 3단계에 걸쳐 단서가 순차적으로 공개됨
+- **봇 참여**: 토론 단계마다 봇이 자신의 단서를 자동으로 채팅에 공유
+- **투표 시스템**: 모든 플레이어(봇 포함)가 범인 후보에게 투표
+- **승리 조건**: 범인이 최다 득표 시 시민 승리, 그 외 범인 승리
+
+## 📋 시나리오 JSON 구조
+
+\`\`\`json
+{
+  "id": "unique-kebab-case-id",
+  "title": "매력적이고 기억에 남는 제목",
+  "tagline": "30자 이내의 극적인 한 줄 소개",
+  "difficulty": "초급|중급|고급",
+  "tone": "장르/분위기 (예: 네오 누아르, 미스터리 코미디, 심리 스릴러)",
+  "duration": "120분",
+  "playerRange": { "min": 4, "max": 7 },
+  "summary": "사건의 배경, 상황, 핵심 미스터리를 포함한 200자 내외의 요약",
+  "motifs": [
+    "이야기를 특별하게 만드는 독특한 요소",
+    "플레이어의 흥미를 끄는 설정",
+    "반전의 실마리가 될 수 있는 배경"
+  ],
+  "conflicts": [
+    "등장인물 간의 이해관계 충돌",
+    "사건 해결의 핵심이 되는 질문",
+    "추리를 복잡하게 만드는 모순된 증거"
+  ],
+  "prompts": [
+    "플레이어가 토론에서 다뤄야 할 핵심 질문",
+    "범인을 찾기 위해 반드시 해결해야 할 의문",
+    "증거들을 연결하는 추리 포인트"
+  ],
+  "timeline": [
+    { "time": "HH:MM", "description": "사건 전후의 중요한 시간대별 사건" }
+  ],
+  "evidence": {
+    "physical": [
+      "구체적인 물리적 증거 (예: 찢어진 영수증, 특정 위치의 지문)",
+      "시각적으로 표현 가능한 증거 우선"
+    ],
+    "digital": [
+      "디지털 증거 (예: 문자 메시지, CCTV 타임스탬프, 통화 기록)",
+      "데이터로 표현 가능한 증거"
+    ],
+    "visual": [
+      {
+        "type": "image|document|chart|receipt|letter|message|map|diagram",
+        "title": "증거 이름",
+        "description": "증거 설명",
+        "html": "<!-- 시각적 증거를 표현할 HTML 코드 -->",
+        "imagePrompt": "이미지 생성 AI를 위한 상세한 프롬프트 (선택사항)"
+      }
+    ]
+  },
+  "roles": [
+    {
+      "persona": "한국식 이름 또는 캐릭터 이름",
+      "title": "구체적인 직책/역할 (예: 수석 프로듀서, 회계 담당자)",
+      "summary": "이 캐릭터의 배경과 사건과의 관계를 50자 내외로",
+      "briefing": "플레이어에게 주어지는 역할 설명 및 목표 (150자 내외)",
+      "clues": {
+        "type": "culprit|citizen",
+        "objective": "이 역할이 달성해야 할 구체적 목표",
+        "rounds": [
+          {
+            "stage": "clue_a|clue_b|clue_c",
+            "label": "1차 단서|2차 단서|3차 단서",
+            "truths": [
+              "이 캐릭터가 알고 있는 진실 (구체적이고 확인 가능한 정보)",
+              "다른 캐릭터를 의심하게 만들 수 있는 관찰 사항",
+              "사건 해결에 도움이 되는 결정적 단서"
+            ],
+            "misdirections": [
+              "다른 사람을 의심하게 만드는 정보",
+              "자신의 알리바이를 강화하는 정보",
+              "진실이지만 오해를 불러일으킬 수 있는 정보"
+            ],
+            "prompts": [
+              "이 단계에서 취해야 할 구체적 행동",
+              "다른 플레이어에게 물어봐야 할 질문",
+              "자신을 방어하거나 의심을 돌리는 전략"
+            ],
+            "exposed": [
+              "범인의 경우: 들킬 위험이 있는 약점이나 증거",
+              "시민의 경우: 오해받을 수 있는 행동이나 상황"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+\`\`\`
+
+## 🎨 시각적 증거 생성 가이드
+
+### 증거 타입별 HTML 템플릿
+
+#### 1. 영수증/거래 내역
+\`\`\`html
+<div style="font-family: 'Courier New', monospace; background: #fff; padding: 20px; border: 1px solid #000; max-width: 300px;">
+  <div style="text-align: center; font-weight: bold; margin-bottom: 10px;">상호명</div>
+  <div style="border-top: 1px dashed #000; padding-top: 10px;">
+    <div>거래일시: 2024-10-19 18:45</div>
+    <div>항목: 커피 2잔</div>
+    <div>금액: 8,000원</div>
+  </div>
+</div>
+\`\`\`
+
+#### 2. 문자 메시지
+\`\`\`html
+<div style="background: #f0f0f0; padding: 15px; border-radius: 10px; max-width: 280px;">
+  <div style="background: #dcf8c6; padding: 10px; border-radius: 7px; margin-bottom: 5px;">
+    <div style="font-size: 12px; color: #666;">발신: 홍길동</div>
+    <div>오늘 회의 꼭 참석해주세요</div>
+    <div style="text-align: right; font-size: 11px; color: #999;">18:30</div>
+  </div>
+</div>
+\`\`\`
+
+#### 3. 일정표/타임라인
+\`\`\`html
+<table style="border-collapse: collapse; width: 100%; font-size: 14px;">
+  <tr style="background: #333; color: #fff;">
+    <th style="padding: 8px; border: 1px solid #666;">시간</th>
+    <th style="padding: 8px; border: 1px solid #666;">일정</th>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #ddd;">18:00</td>
+    <td style="padding: 8px; border: 1px solid #ddd;">회의실 입장</td>
+  </tr>
+</table>
+\`\`\`
+
+#### 4. 편지/메모
+\`\`\`html
+<div style="background: #fffacd; padding: 20px; border-left: 3px solid #f4a460; font-family: 'Nanum Pen Script', cursive;">
+  <p style="margin: 0 0 10px 0;">친애하는 ○○에게,</p>
+  <p style="margin: 10px 0;">편지 내용...</p>
+  <p style="text-align: right; margin-top: 20px;">- 발신인</p>
+</div>
+\`\`\`
+
+#### 5. CCTV 타임스탬프
+\`\`\`html
+<div style="background: #000; color: #0f0; font-family: monospace; padding: 15px; border: 2px solid #333;">
+  <div style="margin-bottom: 5px;">📹 CAMERA 01</div>
+  <div>DATE: 2024-10-19</div>
+  <div>TIME: 18:45:23</div>
+  <div style="margin-top: 10px; color: #ff0;">⚠️ MOTION DETECTED</div>
+</div>
+\`\`\`
+
+#### 6. 도표/그래프
+\`\`\`html
+<svg width="300" height="200" style="border: 1px solid #ccc;">
+  <rect x="50" y="150" width="40" height="30" fill="#4CAF50"/>
+  <rect x="110" y="120" width="40" height="60" fill="#2196F3"/>
+  <text x="65" y="195" text-anchor="middle" font-size="12">A</text>
+  <text x="125" y="195" text-anchor="middle" font-size="12">B</text>
+</svg>
+\`\`\`
+
+#### 7. 지도/위치
+\`\`\`html
+<div style="position: relative; width: 300px; height: 200px; background: #e0e0e0; border: 2px solid #333;">
+  <div style="position: absolute; top: 50px; left: 100px; width: 20px; height: 20px; background: red; border-radius: 50%;"></div>
+  <div style="position: absolute; top: 55px; left: 125px; font-size: 12px;">사건 발생 지점</div>
+</div>
+\`\`\`
+
+### 이미지 생성 프롬프트 작성법
+이미지 생성 AI를 사용할 수 있는 경우:
+- **스타일**: "photorealistic crime scene photograph" 또는 "documentary style evidence photo"
+- **구체성**: 객체의 위치, 조명, 각도를 명확히 지정
+- **맥락**: 사건과의 연관성을 드러낼 수 있는 디테일 포함
+- **예시**: "A torn receipt on a wooden table, evening lighting, slight coffee stain on the corner, showing transaction time of 18:45, documentary photography style"
+
+## 🎯 고품질 시나리오 작성 체크리스트
+
+### 1. 스토리 완성도
+- [ ] 사건의 동기가 명확하고 설득력 있는가?
+- [ ] 범인을 찾을 수 있는 논리적 단서가 충분한가?
+- [ ] 모든 캐릭터가 의심받을 수 있는 여지가 있는가?
+- [ ] 반전 요소가 있으면서도 공정한가?
+
+### 2. 밸런스
+- [ ] 범인의 알리바이가 완벽하지 않으면서도 교묘한가?
+- [ ] 시민들이 협력하면 범인을 찾을 수 있는가?
+- [ ] 각 단계마다 의미 있는 정보가 공개되는가?
+- [ ] 최종 단계(clue_c)에 결정적 증거가 포함되어 있는가?
+
+### 3. 캐릭터 디자인
+- [ ] 각 캐릭터의 동기와 배경이 명확한가?
+- [ ] 캐릭터 간 관계와 갈등이 흥미로운가?
+- [ ] 모든 캐릭터가 게임에 기여할 수 있는가?
+- [ ] 캐릭터 수가 playerRange와 정확히 일치하는가?
+
+### 4. 단서 설계
+- [ ] truths는 구체적이고 검증 가능한가?
+- [ ] misdirections가 자연스럽게 의심을 분산시키는가?
+- [ ] 단서들이 서로 연결되어 있는가?
+- [ ] 시각적 증거가 최소 3개 이상 포함되어 있는가?
+
+### 5. 시각적 증거
+- [ ] 각 증거가 사건 해결에 실질적으로 기여하는가?
+- [ ] HTML 코드가 실행 가능하고 깔끔한가?
+- [ ] 이미지 프롬프트가 충분히 상세한가?
+- [ ] 증거 타입이 다양한가? (영수증, 메시지, 타임라인 등)
+
+### 6. 게임 플레이
+- [ ] 브리핑 단계에서 충분한 정보를 제공하는가?
+- [ ] 토론 시간이 충분히 활용될 수 있는가?
+- [ ] 봇이 공유할 단서가 적절히 분배되어 있는가?
+- [ ] 투표 단계에서 결정하기 어려운 정도의 긴장감이 있는가?
+
+## 💡 고급 디자인 팁
+
+### 레드 헤링 (Red Herring) 디자인
+- 범인이 아닌 캐릭터에게 강한 동기 부여
+- 의심스러운 행동이 있지만 다른 이유가 있는 경우
+- 예: "A는 사건 시각에 현장 근처에 있었지만, 실제로는 비밀 연애 상대를 만나러 간 것"
+
+### 타임라인 트릭
+- 증언 간 미묘한 시간 차이로 거짓말 노출
+- CCTV나 통화 기록으로 알리바이 붕괴
+- 예: "B는 7시에 있었다고 주장하지만, CCTV는 7시 15분을 기록"
+
+### 정보 연결 고리
+- 단독으로는 무의미하지만 결합하면 결정적인 단서들
+- 서로 다른 캐릭터가 가진 정보를 합쳐야 진실 도출
+- 예: "C는 소리를 들었고, D는 그 시각 특정 장소에 있었다는 것을 알고 있음"
+
+### 심리적 긴장감
+- 범인에게는 들킬 위험(exposed)을 단계별로 증가
+- 시민들에게는 오해받을 수 있는 상황 제공
+- 마지막 단계에서 극적인 반전 가능성
+
+## 🎬 예시: 완벽한 visual 증거
+
+\`\`\`json
+{
+  "type": "receipt",
+  "title": "카페 영수증",
+  "description": "사건 당일 오후 6시 45분에 발행된 영수증, 커피 얼룩이 있음",
+  "html": "<div style='font-family: monospace; background: linear-gradient(to bottom, #fff 0%, #f9f9f9 100%); padding: 25px; border: 2px solid #333; max-width: 320px; box-shadow: 2px 2px 8px rgba(0,0,0,0.1);'><div style='text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px;'>☕ 코지 카페</div><div style='font-size: 13px; line-height: 1.6;'><div style='margin: 10px 0;'>날짜: 2024-10-19</div><div style='margin: 10px 0;'>시간: 18:45:32</div><div style='border-top: 1px dashed #666; border-bottom: 1px dashed #666; padding: 10px 0; margin: 10px 0;'><div style='display: flex; justify-content: space-between;'><span>아메리카노 (Hot)</span><span>4,500원</span></div><div style='display: flex; justify-content: space-between;'><span>카페라떼 (Ice)</span><span>5,000원</span></div></div><div style='display: flex; justify-content: space-between; font-weight: bold; font-size: 15px; margin-top: 10px;'><span>합계</span><span>9,500원</span></div><div style='margin-top: 10px; font-size: 11px; color: #666;'>결제: 카드 (**** 1234)</div></div><div style='position: absolute; top: 30px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: rgba(139, 69, 19, 0.2); border: 2px solid rgba(139, 69, 19, 0.4);'></div></div>",
+  "imagePrompt": "A coffee-stained receipt from a cozy cafe, photographed on a wooden table, evening natural light, slightly crumpled, showing transaction details for two coffee drinks at 18:45, realistic texture, documentary photography style, shallow depth of field"
+}
+\`\`\`
+
+이 가이드를 따라 고품질의 몰입감 있는 범죄 추리 게임을 만들어보세요!
+`;
