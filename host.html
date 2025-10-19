@@ -229,6 +229,7 @@
                     <button class="tab-nav__btn" data-tab="profile" type="button">내 정보</button>
                     <button class="tab-nav__btn" data-tab="scenario" type="button">사건 정보</button>
                     <button class="tab-nav__btn" data-tab="chat" type="button">채팅</button>
+                    <button class="tab-nav__btn" data-tab="vote" type="button">투표</button>
                     <button class="tab-nav__btn" data-tab="control" type="button">호스트 제어</button>
                 </div>
 
@@ -331,6 +332,21 @@
                                     </form>
                                 </div>
                             </div>
+                        </article>
+                    </section>
+
+                    <section class="tab-panel" data-tab="vote">
+                        <article class="card">
+                            <h3 class="card__title">최후 투표</h3>
+                            <form id="hostVoteForm" class="form">
+                                <label class="field">
+                                    <span class="field__label">범인이라고 생각하는 사람</span>
+                                    <select id="hostVoteTarget" class="field__select" disabled></select>
+                                </label>
+                                <button type="submit" class="btn btn--primary" disabled>투표 제출</button>
+                            </form>
+                            <p class="helper-text" id="hostVoteHelper">투표가 시작되면 선택지가 활성화됩니다.</p>
+                            <div class="vote-result" id="hostVoteStatus"></div>
                         </article>
                     </section>
 

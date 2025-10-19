@@ -377,6 +377,10 @@ const dom = {
   hostReadyToggleBtn: document.getElementById("hostReadyToggleBtn"),
   tabButtons: document.querySelectorAll(".tab-nav__btn"),
   tabPanels: document.querySelectorAll(".tab-panel"),
+  hostVoteForm: document.getElementById("hostVoteForm"),
+  hostVoteTarget: document.getElementById("hostVoteTarget"),
+  hostVoteHelper: document.getElementById("hostVoteHelper"),
+  hostVoteStatus: document.getElementById("hostVoteStatus"),
   toast: document.getElementById("toast")
 };
 
@@ -1940,6 +1944,7 @@ async function loadPlayers() {
     updatePlayerStats();
     updateVoteStatus();
     updateHostReadyUI();
+    updateHostVoteUI();
     if (state.sessionRecordId) {
       try {
         const updated = await api.update("sessions", state.sessionRecordId, {
@@ -2716,6 +2721,9 @@ function attachEventListeners() {
   if (dom.hostReadyToggleBtn) {
     dom.hostReadyToggleBtn.addEventListener("click", handleHostReadyToggle);
   }
+  if (dom.hostVoteForm) {
+    dom.hostVoteForm.addEventListener("submit", handleHostVoteSubmit);
+  }
   dom.tabButtons.forEach((button) => {
     button.addEventListener("click", () => {
       switchTab(button.dataset.tab);
@@ -2760,6 +2768,7 @@ async function initialise() {
   await refreshHostResumeSessions();
   await resumeHostSessionFromStorage();
   updateHostReadyUI();
+  updateHostVoteUI();
 }
 
 function toggleChatAvailability(enabled) {
@@ -2779,3 +2788,143 @@ window.addEventListener("beforeunload", () => {
   clearInterval(state.sessionInterval);
   clearInterval(state.stageTimerInterval);
 });
+
+// 투표 관련 함수들
+function populateHostVoteOptions() {
+  if (!dom.hostVoteTarget) return;
+  const existingValue = dom.hostVoteTarget.value;
+  dom.hostVoteTarget.innerHTML = "<option value=\"\">-- 대상을 선택하세요 --</option>";
+  state.players
+    .filter((player) => !player.is_bot && player.id !== state.hostPlayerId)
+    .forEach((player) => {
+      const option = document.createElement("option");
+      option.value = player.id;
+      option.textContent = player.role ? `${player.name} (${player.role})` : player.name;
+      dom.hostVoteTarget.appendChild(option);
+    });
+  if (existingValue) {
+    dom.hostVoteTarget.value = existingValue;
+  }
+}
+
+function updateHostVoteUI() {
+  if (!dom.hostVoteForm || !state.activeSession) return;
+  const isVoting = state.activeSession.stage === "voting";
+  populateHostVoteOptions();
+  dom.hostVoteTarget.disabled = !isVoting || (state.hostPlayer && state.hostPlayer.has_voted);
+  dom.hostVoteForm.querySelector("button[type='submit']").disabled =
+    !isVoting || (state.hostPlayer && state.hostPlayer.has_voted) || state.voteInFlight || !state.hostPlayerId;
+
+  if (!isVoting) {
+    if (dom.hostVoteHelper) dom.hostVoteHelper.textContent = "투표가 시작되면 선택지가 활성화됩니다.";
+    if (state.activeSession.stage === "result") {
+      renderHostVoteOutcome(state.activeSession);
+    }
+    return;
+  }
+
+  updateHostVoteStatusBanner();
+
+  if (state.hostPlayer && state.hostPlayer.has_voted) {
+    const targetName = getPlayerNameById(state.hostPlayer.vote_target);
+    if (dom.hostVoteHelper) dom.hostVoteHelper.textContent = targetName
+      ? `이미 '${targetName}'에게 투표했습니다. 결과 발표를 기다려 주세요.`
+      : "이미 투표를 제출했습니다.";
+  } else {
+    if (dom.hostVoteHelper) dom.hostVoteHelper.textContent = "범인이라고 생각하는 인물을 선택해 투표하세요.";
+  }
+}
+
+function updateHostVoteStatusBanner() {
+  if (!dom.hostVoteStatus) return;
+  if (!state.activeSession || state.activeSession.stage !== "voting") {
+    if (dom.hostVoteStatus) dom.hostVoteStatus.innerHTML = "";
+    return;
+  }
+  const eligible = state.players.filter((player) => !player.is_bot).length;
+  const submitted = state.players.filter((player) => player.has_voted).length;
+  if (dom.hostVoteStatus) dom.hostVoteStatus.innerHTML = `<strong>투표 진행 상황</strong><br>${submitted} / ${eligible} 명 투표 완료`;
+}
+
+function renderHostVoteOutcome(session) {
+  if (!dom.hostVoteStatus || !session) return;
+  if (session.stage !== "result") {
+    return;
+  }
+  let tallyHtml = "";
+  if (session.vote_summary) {
+    try {
+      const summary = JSON.parse(session.vote_summary);
+      if (summary?.tallies) {
+        tallyHtml = Object.entries(summary.tallies)
+          .map(([name, count]) => `<span><span>${name}</span><span>${count}표</span></span>`)
+          .join("");
+        tallyHtml = `<div class="vote-result__tally">${tallyHtml}</div>`;
+      } else if (typeof session.vote_summary === "string") {
+        tallyHtml = `<p>${session.vote_summary}</p>`;
+      }
+    } catch (error) {
+      tallyHtml = `<p>${session.vote_summary}</p>`;
+    }
+  }
+
+  const headline =
+    session.winning_side === "citizens"
+      ? "시민 팀 승리!"
+      : session.winning_side === "culprit"
+        ? "범인 승리!"
+        : "결과 발표";
+
+  if (dom.hostVoteStatus) dom.hostVoteStatus.innerHTML = `
+    <div class="vote-result__headline">${headline}</div>
+    ${tallyHtml}
+  `;
+  if (dom.hostVoteHelper) dom.hostVoteHelper.textContent = "결과가 발표되었습니다.";
+  if (dom.hostVoteTarget) dom.hostVoteTarget.disabled = true;
+  const submitBtn = dom.hostVoteForm ? dom.hostVoteForm.querySelector("button[type='submit']") : null;
+  if (submitBtn) submitBtn.disabled = true;
+}
+
+async function handleHostVoteSubmit(event) {
+  event.preventDefault();
+  if (!state.activeSession || state.activeSession.stage !== "voting") {
+    showToast("투표 가능한 시간이 아닙니다.", "warn");
+    return;
+  }
+  if (!state.hostPlayer || state.hostPlayer.has_voted) {
+    showToast("이미 투표를 완료했습니다.", "info");
+    return;
+  }
+  const targetId = dom.hostVoteTarget.value;
+  if (!targetId) {
+    showToast("투표할 대상을 선택하세요.", "warn");
+    return;
+  }
+
+  state.voteInFlight = true;
+  const submitBtn = dom.hostVoteForm ? dom.hostVoteForm.querySelector("button[type='submit']") : null;
+  if (submitBtn) submitBtn.disabled = true;
+  try {
+    await api.update("players", state.hostPlayerId, {
+      has_voted: true,
+      vote_target: targetId,
+      last_seen: new Date().toISOString()
+    });
+    state.hostPlayer.has_voted = true;
+    state.hostPlayer.vote_target = targetId;
+    showToast("투표가 제출되었습니다. 결과를 기다려 주세요.", "success");
+    updateHostVoteUI();
+    await loadPlayers();
+  } catch (error) {
+    console.error(error);
+    showToast("투표를 제출하지 못했습니다.", "error");
+    if (submitBtn) submitBtn.disabled = false;
+  } finally {
+    state.voteInFlight = false;
+  }
+}
+
+function getPlayerNameById(playerId) {
+  const player = state.players.find(p => p.id === playerId);
+  return player ? player.name : null;
+}
