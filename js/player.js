@@ -1812,8 +1812,11 @@ function renderChatMessages(messages = []) {
       hour: "2-digit",
       minute: "2-digit"
     });
-    // 배역 이름만 표시 (역할 표시 제거)
-    meta.innerHTML = `<span>${msg.role || msg.player_name}</span><span>${timeText}</span>`;
+    
+    // 역할(탐정/범인/용의자)과 캐릭터 이름 모두 표시
+    const displayName = msg.role || msg.player_name;
+    const roleBadge = msg.role_type ? `<span class="chat-role-badge chat-role-badge--${msg.role_type}">${msg.role_type}</span>` : '';
+    meta.innerHTML = `<span>${roleBadge}${displayName}</span><span>${timeText}</span>`;
 
     const text = document.createElement("p");
     text.className = "chat-message__text";
@@ -1834,10 +1837,19 @@ async function handleChatSubmit(event) {
   const message = dom.chatMessage.value.trim();
   if (!message) return;
   try {
+    // role_type 결정 (탐정/범인/용의자)
+    let roleType = null;
+    if (state.player && state.player.role) {
+      if (state.player.role === "탐정") roleType = "detective";
+      else if (state.player.role === "범인") roleType = "culprit";
+      else if (state.player.role.includes("용의자")) roleType = "suspect";
+    }
+    
     await api.create("chat_messages", {
       session_code: state.chatIdentity.sessionCode,
       player_name: state.chatIdentity.name,
       role: state.chatIdentity.role,
+      role_type: roleType,
       message,
       sent_at: new Date().toISOString()
     });

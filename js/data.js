@@ -181,7 +181,48 @@ export const scenarios = [
           misdirections: [
             "라이브 스트리밍 서버의 비인가 접속은 윤가빈이 관리하는 태블릿에서 발생한 것으로 보입니다.",
             "피해자가 커튼콜 직전 문지후에게 '대타 준비'라는 문자를 보냈습니다."
-          ]
+          ],
+          timeline: [
+            {"time": "18:30", "action": "전체 출연진과 함께 무대 리허설 참여"},
+            {"time": "19:15", "action": "무대 감독실에서 안전 제어 패널 점검"},
+            {"time": "19:40", "action": "커튼콜 시작, 무대 뒤에서 대기"}
+          ],
+          suggestedQuestions: [
+            "안전 제어 패널 로그를 누가 확인했는가?",
+            "와이어 잠금 장치를 누가 마지막으로 만졌는가?"
+          ],
+          keyConflicts: [
+            "진실을 밝히는 것과 극단의 명성을 지키는 것 사이의 갈등"
+          ],
+          visualEvidence: {
+            "clue_a": [
+              {
+                "type": "document",
+                "title": "안전 제어 패널 로그",
+                "description": "사건 당일 무대 안전 시스템 접근 기록",
+                "html": "<table style='border-collapse: collapse; width: 100%; max-width: 400px; font-size: 13px; font-family: Consolas, monospace; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1);'><thead><tr style='background: #2c3e50; color: #ecf0f1;'><th style='padding: 10px; border: 1px solid #34495e; text-align: left;'>시간</th><th style='padding: 10px; border: 1px solid #34495e; text-align: left;'>계정</th><th style='padding: 10px; border: 1px solid #34495e; text-align: left;'>동작</th></tr></thead><tbody><tr><td style='padding: 8px; border: 1px solid #ddd;'>19:25:14</td><td style='padding: 8px; border: 1px solid #ddd;'>KJDY</td><td style='padding: 8px; border: 1px solid #ddd;'>시스템 체크</td></tr><tr style='background: #fff3cd;'><td style='padding: 8px; border: 1px solid #ddd;'>19:33:42</td><td style='padding: 8px; border: 1px solid #ddd; font-weight: bold; color: #d9534f;'>BDOH</td><td style='padding: 8px; border: 1px solid #ddd; font-weight: bold;'>안전잠금 해제</td></tr><tr><td style='padding: 8px; border: 1px solid #ddd;'>19:41:03</td><td style='padding: 8px; border: 1px solid #ddd;'>KJDY</td><td style='padding: 8px; border: 1px solid #ddd;'>긴급 점검</td></tr></tbody></table>",
+                "imagePrompt": "A digital panel log screen with highlighted suspicious entry showing BDOH account accessing safety lock system at 19:33"
+              }
+            ],
+            "clue_b": [
+              {
+                "type": "receipt",
+                "title": "조명 장갑 관리 대장",
+                "description": "조명팀 전용 절연 장갑 대출 기록",
+                "html": "<div style='font-family: monospace; background: linear-gradient(to bottom, #fff 0%, #f9f9f9 100%); padding: 20px; border: 2px solid #333; max-width: 320px; box-shadow: 2px 2px 8px rgba(0,0,0,0.1);'><div style='text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px;'>🧤 절연 장갑 대출 기록</div><div style='font-size: 13px; line-height: 1.8;'><div style='display: flex; justify-content: space-between; margin: 8px 0;'><span>대출자:</span><span style='font-weight: bold;'>백도현 (조명팀)</span></div><div style='display: flex; justify-content: space-between; margin: 8px 0;'><span>대출 시각:</span><span>19:20</span></div><div style='display: flex; justify-content: space-between; margin: 8px 0;'><span>용도:</span><span>와이어 점검</span></div><div style='display: flex; justify-content: space-between; margin: 8px 0; color: #d9534f;'><span>반납 상태:</span><span style='font-weight: bold;'>19:45 반납</span></div><div style='border-top: 1px dashed #666; margin: 15px 0; padding-top: 10px; font-size: 11px; color: #666;'>⚠️ 장갑에서 와이어 섬유 검출됨</div></div></div>",
+                "imagePrompt": "A checkout log showing insulated gloves borrowed by lighting team member with wire fiber contamination note"
+              }
+            ],
+            "clue_c": [
+              {
+                "type": "photo",
+                "title": "와이어 잠금 장치 근접 촬영",
+                "description": "범행 도구에서 발견된 결정적 흔적",
+                "html": "<div style='background: #000; padding: 20px; border-radius: 8px; max-width: 380px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);'><div style='background: #fff; padding: 15px; border-radius: 4px;'><div style='text-align: center; margin-bottom: 10px; font-weight: bold; font-size: 14px; color: #333;'>📸 범죄 현장 사진 #17</div><div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 150px; display: flex; align-items: center; justify-content: center; margin: 10px 0; border-radius: 4px;'><div style='color: #fff; font-size: 48px;'>🔧</div></div><div style='font-size: 12px; line-height: 1.6; color: #333; padding: 10px; background: #f8f9fa; border-left: 4px solid #d9534f;'><strong>증거 #17:</strong> 와이어 잠금 장치에서 조명 오일과 절연 장갑 섬유가 동시에 검출됨. 장갑은 조명팀 전용 장비로, 19:20에 백도현이 대출한 기록이 있음.</div><div style='text-align: right; font-size: 11px; color: #999; margin-top: 10px;'>포렌식 팀 | 2024-10-19 20:15</div></div></div>",
+                "imagePrompt": "A forensic photograph showing a wire lock mechanism with highlighted areas indicating oil traces and insulated glove fibers"
+              }
+            ]
+          }
         }
       ],
       culprit: [
@@ -201,7 +242,41 @@ export const scenarios = [
           exposed: [
             "무대 감시 카메라 공백 직후, 당신이 비상 패널에 접근했다는 로그가 남아 있습니다.",
             "안전장치 절단 흔적에서 조명팀 전용 절연 장갑 섬유가 검출되었습니다."
-          ]
+          ],
+          timeline: [
+            {"time": "18:30", "action": "조명 리허설 진행"},
+            {"time": "19:32", "action": "비상 패널에서 안전 잠금 해제 (범행)"},
+            {"time": "19:40", "action": "커튼콜 참관, 무대 뒤에서 대기"}
+          ],
+          suggestedQuestions: [
+            "조명 시스템이 왜 수동 모드로 전환되었는가?",
+            "안전 패널에 누가 접근했는가?"
+          ],
+          keyConflicts: [
+            "퇴사 결정과 마지막 공연의 성공 사이의 갈등",
+            "개인적인 원한과 직업적 책임감의 충돌"
+          ],
+          visualEvidence: {
+            "clue_a": [
+              {
+                "type": "message",
+                "title": "삭제된 문자 메시지",
+                "description": "범행 직후 백도현이 삭제한 메시지 복구본",
+                "html": "<div style='background: #b2c7d9; padding: 20px; border-radius: 12px; max-width: 320px; box-shadow: 0 2px 10px rgba(0,0,0,0.15);'><div style='background: #ffffff; padding: 12px 15px; border-radius: 10px; margin-bottom: 8px;'><div style='font-size: 11px; color: #888; margin-bottom: 5px; font-weight: bold;'>📱 백도현</div><div style='font-size: 14px; line-height: 1.5; color: #000;'>이제 끝났어. 더 이상 이 무대에서 일할 수 없어.</div><div style='text-align: right; font-size: 10px; color: #999; margin-top: 8px;'>19:34 (삭제됨)</div></div><div style='background: #ffe400; padding: 12px 15px; border-radius: 10px; margin-left: 30px;'><div style='font-size: 11px; color: #888; margin-bottom: 5px; font-weight: bold;'>자신에게</div><div style='font-size: 14px; line-height: 1.5; color: #000;'>한서율이 망가지면 모두가 알게 될 거야.</div><div style='text-align: right; font-size: 10px; color: #999; margin-top: 8px;'>19:34 (삭제됨)</div></div><div style='margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.7); border-radius: 8px; font-size: 11px; color: #555;'>⚠️ 이 메시지는 사용자가 삭제한 후 포렌식 도구로 복구되었습니다.</div></div>",
+                "imagePrompt": "A recovered deleted text message showing culprit's self-talk about ending career and targeting victim"
+              }
+            ],
+            "clue_b": [
+              {
+                "type": "document",
+                "title": "무대 감시 카메라 타임라인",
+                "description": "19:20~19:30 사이 백도현의 동선",
+                "html": "<div style='background: #2c3e50; padding: 20px; border-radius: 8px; max-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);'><div style='background: #ecf0f1; padding: 15px; border-radius: 4px;'><div style='text-align: center; margin-bottom: 15px; font-weight: bold; font-size: 15px; color: #2c3e50;'>📹 CCTV 타임라인 분석</div><div style='font-size: 12px; line-height: 2; color: #34495e;'><div style='padding: 8px; background: #fff; margin: 5px 0; border-left: 4px solid #3498db; border-radius: 2px;'><strong>19:20:</strong> 백도현, 장갑실 진입</div><div style='padding: 8px; background: #fff; margin: 5px 0; border-left: 4px solid #3498db; border-radius: 2px;'><strong>19:25:</strong> 조명 장갑 대출</div><div style='padding: 8px; background: #fff3cd; margin: 5px 0; border-left: 4px solid #f39c12; border-radius: 2px;'><strong>19:28~19:31:</strong> <span style='color: #d9534f; font-weight: bold;'>카메라 블랙아웃</span></div><div style='padding: 8px; background: #fff; margin: 5px 0; border-left: 4px solid #3498db; border-radius: 2px;'><strong>19:32:</strong> 백도현, 안전 패널 존 진입 확인</div><div style='padding: 8px; background: #fff; margin: 5px 0; border-left: 4px solid #3498db; border-radius: 2px;'><strong>19:35:</strong> 백도현, 조명실 복귀</div></div><div style='margin-top: 15px; padding: 10px; background: rgba(231,76,60,0.1); border-left: 3px solid #e74c3c; font-size: 11px; color: #c0392b;'>⚠️ 블랙아웃 구간에서 안전 패널 조작 추정</div></div></div>",
+                "imagePrompt": "A CCTV timeline analysis showing culprit's movement with highlighted blackout period during crime"
+              }
+            ],
+            "clue_c": []
+          }
         }
       ],
       suspects: [
@@ -219,7 +294,40 @@ export const scenarios = [
           misdirections: [
             "윤가빈이 라이브 방송에 사고 장면을 그대로 내보내자고 했다는 소문을 들었습니다.",
             "문지후가 피해자에게 '다음 장면은 네가 필요 없다'고 말하는 것을 들었습니다."
-          ]
+          ],
+          timeline: [
+            {"time": "18:30", "action": "무대 리허설 참여"},
+            {"time": "19:10", "action": "분장실에서 통화 (경쟁 극단 PD와)"},
+            {"time": "19:40", "action": "커튼콜 진행"}
+          ],
+          suggestedQuestions: [
+            "백도현이 와이어 안전고리를 왜 점검했는가?",
+            "누가 와이어 잠금 장치를 해제했는가?"
+          ],
+          keyConflicts: [
+            "주연 자리를 지키려는 욕심과 안전에 대한 불안"
+          ],
+          visualEvidence: {
+            "clue_a": [
+              {
+                "type": "message",
+                "title": "피해자가 보낸 경고 문자",
+                "description": "한서율이 커튼콜 직전 문지후에게 보낸 메시지",
+                "html": "<div style='background: #f0f0f0; padding: 15px; border-radius: 10px; max-width: 300px; font-family: -apple-system, sans-serif;'><div style='background: #dcf8c6; padding: 12px; border-radius: 7px; margin-bottom: 8px;'><div style='font-size: 11px; color: #666; margin-bottom: 4px;'>발신: 한서율</div><div style='font-size: 14px;'>지후야, 대타 준비해둬. 내가 무리한 것 같아.</div><div style='text-align: right; font-size: 11px; color: #999; margin-top: 4px;'>19:35</div></div><div style='background: #fff; padding: 12px; border-radius: 7px;'><div style='font-size: 11px; color: #666; margin-bottom: 4px;'>수신: 문지후</div><div style='font-size: 14px;'>진짜요? 지금 말씀하시면...</div><div style='text-align: right; font-size: 11px; color: #999; margin-top: 4px;'>19:36</div></div></div>",
+                "imagePrompt": "Text message conversation showing victim warning about needing a replacement just before the incident"
+              }
+            ],
+            "clue_b": [],
+            "clue_c": [
+              {
+                "type": "photo",
+                "title": "백도현의 혼잣말 녹음",
+                "description": "리허설 중 한서율이 녹음한 오디오 파일",
+                "html": "<div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 12px; max-width: 350px; box-shadow: 0 4px 16px rgba(0,0,0,0.2);'><div style='background: #fff; padding: 15px; border-radius: 8px;'><div style='text-align: center; margin-bottom: 15px;'><div style='font-size: 32px; margin-bottom: 5px;'>🎙️</div><div style='font-weight: bold; font-size: 14px; color: #333;'>음성 녹음 파일</div></div><div style='background: #f8f9fa; padding: 15px; border-radius: 6px; margin: 10px 0;'><div style='font-size: 12px; color: #666; margin-bottom: 8px;'>녹음 시각: 19:28</div><div style='font-size: 12px; color: #666; margin-bottom: 8px;'>위치: 무대 뒤편</div><div style='background: #fff; padding: 12px; border-left: 4px solid #e74c3c; margin-top: 10px; font-style: italic; color: #555;'>\"이제 한 번만 더 내리면 된다... 모두가 알게 될 거야.\"</div><div style='font-size: 11px; color: #999; margin-top: 8px; text-align: right;'>- 백도현의 목소리로 추정</div></div></div></div>",
+                "imagePrompt": "An audio recording interface showing waveform with transcript of culprit's self-talk about 'one more time'"
+              }
+            ]
+          }
         },
         {
           name: "문지후",
@@ -235,7 +343,40 @@ export const scenarios = [
           misdirections: [
             "한서율이 무대 진입 전, 누군가와 몰래 통화하며 '이제 끝내자'고 말했습니다.",
             "스트리밍 서버 접근 기록에 홍보팀 공용 계정이 여러 번 등장했습니다."
-          ]
+          ],
+          timeline: [
+            {"time": "18:30", "action": "대기실에서 대본 복습"},
+            {"time": "19:20", "action": "백도현과 조명 테스트 관련 대화"},
+            {"time": "19:35", "action": "피해자에게 문자 메시지 수신"}
+          ],
+          suggestedQuestions: [
+            "백도현이 패널 존을 왜 혼자 비우고 싶어 했는가?",
+            "와이어 교체 시간표에 이름이 왜 두 번 적혀 있는가?"
+          ],
+          keyConflicts: [
+            "대타 기회에 대한 욕심과 동료에 대한 죄책감"
+          ],
+          visualEvidence: {
+            "clue_a": [],
+            "clue_b": [
+              {
+                "type": "document",
+                "title": "와이어 교체 시간표",
+                "description": "백도현의 이름이 두 번 겹쳐 적힌 이상한 시간표",
+                "html": "<div style='font-family: monospace; background: linear-gradient(to bottom, #fff 0%, #f9f9f9 100%); padding: 20px; border: 2px solid #333; max-width: 350px; box-shadow: 2px 2px 8px rgba(0,0,0,0.1);'><div style='text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px;'>⚙️ 와이어 교체 시간표</div><div style='font-size: 13px; line-height: 1.8;'><div style='padding: 8px; margin: 5px 0; background: #fff;'><strong>10월 18일:</strong> 김민수</div><div style='padding: 8px; margin: 5px 0; background: #fff;'><strong>10월 19일:</strong> <span style='color: #d9534f; font-weight: bold;'>백도현</span></div><div style='padding: 8px; margin: 5px 0; background: #fff3cd; border: 2px dashed #f39c12;'><strong>10월 19일:</strong> <span style='color: #d9534f; font-weight: bold;'>백도현</span> (중복)</div><div style='padding: 8px; margin: 5px 0; background: #fff;'><strong>10월 20일:</strong> 이지훈</div></div><div style='margin-top: 15px; padding: 10px; background: rgba(255,0,0,0.05); border-left: 3px solid #e74c3c; font-size: 11px; color: #c0392b;'>⚠️ 같은 날 두 번 배정된 것은 이례적임</div></div>",
+                "imagePrompt": "A wire maintenance schedule showing culprit's name listed twice on the same day"
+              }
+            ],
+            "clue_c": [
+              {
+                "type": "message",
+                "title": "백도현의 요구 메시지",
+                "description": "패널 존을 비워달라는 백도현의 요청",
+                "html": "<div style='background: #b2c7d9; padding: 20px; border-radius: 12px; max-width: 320px; box-shadow: 0 2px 10px rgba(0,0,0,0.15);'><div style='background: #ffffff; padding: 12px 15px; border-radius: 10px; margin-bottom: 8px;'><div style='font-size: 11px; color: #888; margin-bottom: 5px; font-weight: bold;'>📱 백도현</div><div style='font-size: 14px; line-height: 1.5; color: #000;'>지후야, 조명 테스트 때문에 패널 존 좀 비워줄 수 있어? 혼자서 집중해서 해야 해.</div><div style='text-align: right; font-size: 10px; color: #999; margin-top: 8px;'>19:25</div></div><div style='background: #ffe400; padding: 12px 15px; border-radius: 10px; margin-left: 30px;'><div style='font-size: 11px; color: #888; margin-bottom: 5px; font-weight: bold;'>문지후</div><div style='font-size: 14px; line-height: 1.5; color: #000;'>알겠습니다. 대기실에 있을게요.</div><div style='text-align: right; font-size: 10px; color: #999; margin-top: 8px;'>19:26</div></div></div>",
+                "imagePrompt": "Text message showing culprit asking suspect to clear the panel zone for lighting test"
+              }
+            ]
+          }
         },
         {
           name: "윤가빈",
@@ -251,7 +392,40 @@ export const scenarios = [
           misdirections: [
             "분장실 열쇠가 사라진 시간대에 최리안이 자리를 비웠다는 보고를 받았습니다.",
             "피해자가 경쟁 극단 PD와 메시지를 주고받았다는 사실을 알아냈습니다."
-          ]
+          ],
+          timeline: [
+            {"time": "18:30", "action": "홍보팀 사무실에서 라이브 스트리밍 준비"},
+            {"time": "19:15", "action": "무대 뒤에서 스트리밍 서버 점검"},
+            {"time": "19:40", "action": "커튼콜 라이브 송출 모니터링"}
+          ],
+          suggestedQuestions: [
+            "조명 콘솔 계정 'BDOH'는 누구의 계정인가?",
+            "조명 시스템이 언제 수동 모드로 전환되었는가?"
+          ],
+          keyConflicts: [
+            "홍행 성과와 윤리적 책임 사이의 갈등"
+          ],
+          visualEvidence: {
+            "clue_a": [
+              {
+                "type": "document",
+                "title": "조명 콘솔 계정 목록",
+                "description": "조명 시스템 접근 권한이 있는 계정 리스트",
+                "html": "<table style='border-collapse: collapse; width: 100%; max-width: 400px; font-size: 13px; font-family: Consolas, monospace; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1);'><thead><tr style='background: #34495e; color: #ecf0f1;'><th style='padding: 10px; border: 1px solid #2c3e50; text-align: left;'>계정명</th><th style='padding: 10px; border: 1px solid #2c3e50; text-align: left;'>사용자</th><th style='padding: 10px; border: 1px solid #2c3e50; text-align: left;'>권한</th></tr></thead><tbody><tr><td style='padding: 8px; border: 1px solid #ddd;'>ADMIN</td><td style='padding: 8px; border: 1px solid #ddd;'>김도윤</td><td style='padding: 8px; border: 1px solid #ddd;'>전체</td></tr><tr style='background: #fff3cd;'><td style='padding: 8px; border: 1px solid #ddd; font-weight: bold; color: #d9534f;'>BDOH</td><td style='padding: 8px; border: 1px solid #ddd; font-weight: bold;'>백도현</td><td style='padding: 8px; border: 1px solid #ddd;'>조명/안전</td></tr><tr><td style='padding: 8px; border: 1px solid #ddd;'>TECH01</td><td style='padding: 8px; border: 1px solid #ddd;'>문지후</td><td style='padding: 8px; border: 1px solid #ddd;'>음향</td></tr><tr><td style='padding: 8px; border: 1px solid #ddd;'>PROMO</td><td style='padding: 8px; border: 1px solid #ddd;'>윤가빈</td><td style='padding: 8px; border: 1px solid #ddd;'>스트리밍</td></tr></tbody></table>",
+                "imagePrompt": "A user account list showing BDOH account belongs exclusively to the lighting director"
+              }
+            ],
+            "clue_b": [
+              {
+                "type": "chart",
+                "title": "와이어 센서 로그 차트",
+                "description": "조명 시스템 수동 모드 전환 시점",
+                "html": "<div style='background: #fff; padding: 20px; border: 2px solid #ddd; border-radius: 8px; max-width: 400px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);'><div style='text-align: center; font-weight: bold; font-size: 15px; margin-bottom: 15px; color: #2c3e50;'>📊 와이어 센서 로그</div><div style='height: 180px; position: relative; background: linear-gradient(to right, #f8f9fa 0%, #f8f9fa 60%, #ffebee 60%, #ffebee 100%); border: 1px solid #ddd; border-radius: 4px; padding: 15px;'><div style='position: absolute; top: 10px; left: 10px; font-size: 11px; color: #666;'>센서 활성도</div><div style='position: absolute; bottom: 40px; left: 15px; right: 15px; height: 100px; background: linear-gradient(to top, #3498db 0%, #3498db 60%, transparent 60%); border-radius: 2px;'></div><div style='position: absolute; bottom: 40px; right: 60px; width: 100px; height: 20px; background: #e74c3c; border-radius: 2px;'></div><div style='position: absolute; bottom: 10px; left: 15px; right: 15px; display: flex; justify-content: space-between; font-size: 11px; color: #666;'><span>19:00</span><span>19:15</span><span style='color: #e74c3c; font-weight: bold;'>19:28</span><span>19:45</span></div></div><div style='margin-top: 15px; padding: 10px; background: #ffebee; border-left: 3px solid #e74c3c; font-size: 12px; color: #c0392b;'><strong>19:28:</strong> 조명 시스템이 수동 모드로 전환되면서 와이어 센서 로그가 끊김</div></div>",
+                "imagePrompt": "A sensor activity chart showing system switching to manual mode at 19:28 causing log blackout"
+              }
+            ],
+            "clue_c": []
+          }
         },
         {
           name: "최리안",
@@ -267,7 +441,40 @@ export const scenarios = [
           misdirections: [
             "한서율이 공연 직전 무릎을 붙잡고 통증을 호소하며 쉬자고 제안했습니다.",
             "문지후 가방에서 와이어 조정 렌치가 발견됐습니다."
-          ]
+          ],
+          timeline: [
+            {"time": "18:30", "action": "분장실에서 출연진 분장 작업"},
+            {"time": "19:25", "action": "백도현이 키 캐비닛을 열어보는 것 목격"},
+            {"time": "19:40", "action": "피해자 발견 현장에서 조명 오일 냄새 확인"}
+          ],
+          suggestedQuestions: [
+            "백도현이 키 캐비닛을 왜 열어봤는가?",
+            "조명 오일이 왜 그곳에 있었는가?"
+          ],
+          keyConflicts: [
+            "목격자로서의 책임감과 동료들을 의심하기 싫은 마음"
+          ],
+          visualEvidence: {
+            "clue_a": [
+              {
+                "type": "receipt",
+                "title": "분장실 열쇠 대여 기록",
+                "description": "백스테이지 열쇠 대여 및 반납 내역",
+                "html": "<div style='font-family: monospace; background: linear-gradient(to bottom, #fff 0%, #f9f9f9 100%); padding: 20px; border: 2px solid #333; max-width: 320px; box-shadow: 2px 2px 8px rgba(0,0,0,0.1);'><div style='text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px;'>🔑 백스테이지 열쇠 대여</div><div style='font-size: 13px; line-height: 1.8;'><div style='display: flex; justify-content: space-between; margin: 8px 0;'><span>대여자:</span><span style='font-weight: bold;'>최리안</span></div><div style='display: flex; justify-content: space-between; margin: 8px 0;'><span>대여 시각:</span><span>18:50</span></div><div style='display: flex; justify-content: space-between; margin: 8px 0; color: #d9534f;'><span>반납 상태:</span><span style='font-weight: bold;'>미반납</span></div><div style='border-top: 1px dashed #666; margin: 15px 0; padding-top: 10px; font-size: 11px; color: #666;'>⚠️ 열쇠 #3 분실 신고됨 (19:50)</div></div></div>",
+                "imagePrompt": "A key checkout record showing unreturned backstage key with lost report"
+              }
+            ],
+            "clue_b": [],
+            "clue_c": [
+              {
+                "type": "photo",
+                "title": "조명 오일 흔적 분석",
+                "description": "피해자 발견 현장에서 채취한 샘플",
+                "html": "<div style='background: #000; padding: 20px; border-radius: 8px; max-width: 380px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);'><div style='background: #fff; padding: 15px; border-radius: 4px;'><div style='text-align: center; margin-bottom: 10px; font-weight: bold; font-size: 14px; color: #333;'>🔬 포렌식 분석 보고서</div><div style='background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); height: 120px; display: flex; align-items: center; justify-content: center; margin: 10px 0; border-radius: 4px;'><div style='color: #fff; font-size: 42px;'>🧪</div></div><div style='font-size: 12px; line-height: 1.6; color: #333; padding: 10px; background: #f8f9fa;'><div style='margin: 8px 0;'><strong>샘플 위치:</strong> 피해자 발견 현장 바닥</div><div style='margin: 8px 0;'><strong>물질:</strong> 조명 장비용 특수 오일</div><div style='padding: 10px; background: #fff; border-left: 4px solid #e74c3c; margin-top: 10px;'><strong>분석 결과:</strong> 조명팀이 사용하는 와이어 윤활유와 성분이 일치함. 최근 24시간 이내 묻은 것으로 추정.</div></div><div style='text-align: right; font-size: 11px; color: #999; margin-top: 10px;'>포렌식 연구소 | 2024-10-19 21:30</div></div></div>",
+                "imagePrompt": "A forensic analysis report showing lighting oil traces matching wire lubricant used by lighting team"
+              }
+            ]
+          }
         }
       ]
     }

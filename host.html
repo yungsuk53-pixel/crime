@@ -209,13 +209,27 @@
             </section>
 
             <section id="gameView" class="app-view" aria-labelledby="gameTitle">
+                <!-- 상단 상태 바 -->
+                <div class="game-status-bar" id="hostGameStatusBar">
+                    <div class="game-status-bar__item">
+                        <span class="game-status-bar__label">현재 단계:</span>
+                        <span class="game-status-bar__value" id="hostStatusBarStage">-</span>
+                    </div>
+                    <div class="game-status-bar__item">
+                        <span class="game-status-bar__label">남은 시간:</span>
+                        <span class="game-status-bar__value" id="hostStatusBarTimer">-</span>
+                    </div>
+                    <div class="game-status-bar__item">
+                        <span class="badge" id="gameSessionStatus">-</span>
+                    </div>
+                </div>
+
                 <header class="view-header">
                     <div>
                         <h2 id="gameTitle" class="view-header__title">게임 진행</h2>
-                        <p class="view-header__subtitle">버튼으로 원하는 탭을 전환하며 진행 현황, 단서, 채팅을 확인하세요.</p>
+                        <p class="view-header__subtitle">버튼으로 원하는 탭을 전환하며 단서, 채팅을 확인하세요.</p>
                     </div>
                     <div class="view-header__actions">
-                        <span class="badge" id="gameSessionStatus">-</span>
                         <div class="ready-control" id="hostReadyToolbar">
                             <span id="hostReadyStatus" class="badge">투표 대기</span>
                             <button type="button" id="hostReadyToggleBtn" class="btn btn--secondary">턴 끝내기</button>
@@ -224,45 +238,20 @@
                 </header>
 
                 <div class="tab-nav" role="tablist">
-                    <button class="tab-nav__btn tab-nav__btn--active" data-tab="progress" type="button">진행 현황</button>
-                    <button class="tab-nav__btn" data-tab="clues" type="button">내 단서</button>
+                    <button class="tab-nav__btn tab-nav__btn--active" data-tab="clues" type="button">내 단서</button>
                     <button class="tab-nav__btn" data-tab="profile" type="button">내 정보</button>
                     <button class="tab-nav__btn" data-tab="scenario" type="button">사건 정보</button>
+                    <button class="tab-nav__btn" data-tab="roles" type="button">캐릭터 목록</button>
                     <button class="tab-nav__btn" data-tab="chat" type="button">채팅</button>
                     <button class="tab-nav__btn" data-tab="vote" type="button">투표</button>
                     <button class="tab-nav__btn" data-tab="control" type="button">호스트 제어</button>
                 </div>
 
                 <div class="tab-panels">
-                    <section class="tab-panel tab-panel--active" data-tab="progress">
-                        <article class="card card--stacked">
-                            <div class="card__header-row">
-                                <h3 class="card__title">진행 단계</h3>
-                                <span class="badge" id="progressStageBadge">-</span>
-                            </div>
-                            <div class="stage-tracker__wrapper stage-tracker__wrapper--compact">
-                                <ol class="stage-tracker stage-tracker--compact" aria-label="진행 단계 요약">
-                                    <!-- stageTracker is reused via cloning in JS -->
-                                </ol>
-                            </div>
-                            <div class="stage-timer stage-timer--inline" id="gameStageTimer" aria-live="polite">
-                                <span class="stage-timer__label">자동 진행</span>
-                                <span class="stage-timer__time">-</span>
-                            </div>
-                            <div class="session-meta session-meta--grid" id="gameMeta"></div>
-                            <div class="vote-status" id="voteStatus"></div>
-                            <div class="result-banner" id="resultBanner"></div>
-                        </article>
-                        <article class="card">
-                            <h3 class="card__title">준비 현황</h3>
-                            <p class="helper-text">준비 현황은 참가자들의 공개 동의만 집계되며, 개인 단서는 누구도 열람할 수 없습니다.</p>
-                            <div class="vote-status" id="gameReadyStatus"></div>
-                        </article>
-                    </section>
-
-                    <section class="tab-panel" data-tab="clues">
+                    <section class="tab-panel tab-panel--active" data-tab="clues">
                         <article class="card card--accent">
                             <h3 class="card__title">내 역할 & 단서</h3>
+                            <p class="helper-text">게임이 진행되면서 단계별로 증거가 공개됩니다.</p>
                             <div class="role-view" id="hostRoleView">
                                 <p class="placeholder">게임 시작 후 역할과 단서가 표시됩니다.</p>
                             </div>
@@ -294,6 +283,16 @@
                             <h3 class="card__title">타임라인</h3>
                             <p class="helper-text">시간 기반 추리가 필요한 경우에만 표시됩니다.</p>
                             <ul class="timeline" id="gameScenarioTimeline"></ul>
+                        </article>
+                    </section>
+
+                    <section class="tab-panel" data-tab="roles">
+                        <article class="card">
+                            <h3 class="card__title">캐릭터 목록</h3>
+                            <p class="helper-text">게임에 등장하는 모든 캐릭터를 확인할 수 있습니다.</p>
+                            <div class="character-grid" id="hostCharacterList">
+                                <p class="placeholder">게임 시작 후 캐릭터 목록이 표시됩니다.</p>
+                            </div>
                         </article>
                     </section>
 

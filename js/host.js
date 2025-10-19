@@ -381,6 +381,10 @@ const dom = {
   hostVoteTarget: document.getElementById("hostVoteTarget"),
   hostVoteHelper: document.getElementById("hostVoteHelper"),
   hostVoteStatus: document.getElementById("hostVoteStatus"),
+  hostGameStatusBar: document.getElementById("hostGameStatusBar"),
+  hostStatusBarStage: document.getElementById("hostStatusBarStage"),
+  hostStatusBarTimer: document.getElementById("hostStatusBarTimer"),
+  hostCharacterList: document.getElementById("hostCharacterList"),
   toast: document.getElementById("toast")
 };
 
@@ -745,9 +749,11 @@ function updateStageTimerDisplay() {
 function startStageTimerLoop() {
   clearInterval(state.stageTimerInterval);
   updateStageTimerDisplay();
+  updateHostGameStatusBar();
   if (!state.activeSession) return;
   state.stageTimerInterval = setInterval(async () => {
     updateStageTimerDisplay();
+    updateHostGameStatusBar();
     if (!state.activeSession?.auto_stage_enabled) {
       return;
     }
@@ -1098,6 +1104,32 @@ function updateResultBanner() {
     <div class="result-banner__badge">${winner}</div>
     ${summaryText ? `<p>${summaryText}</p>` : ""}
   `;
+}
+
+function updateHostGameStatusBar() {
+  if (!state.activeSession || !dom.hostGameStatusBar) return;
+
+  const stage = state.activeSession.stage || "lobby";
+  const stageLabel = getStageLabel(stage);
+
+  if (dom.hostStatusBarStage) {
+    dom.hostStatusBarStage.textContent = stageLabel;
+  }
+
+  const timerData = state.timers[stage];
+  if (dom.hostStatusBarTimer && timerData) {
+    const remaining = Math.max(0, timerData.remaining || 0);
+    const minutes = Math.floor(remaining / 60);
+    const seconds = remaining % 60;
+    dom.hostStatusBarTimer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  } else if (dom.hostStatusBarTimer) {
+    dom.hostStatusBarTimer.textContent = "-";
+  }
+
+  // 상태 바 항상 표시
+  if (dom.hostGameStatusBar) {
+    dom.hostGameStatusBar.style.display = 'flex';
+  }
 }
 
 function updateControlStates() {
@@ -2027,6 +2059,7 @@ async function loadPlayers() {
       state.hostPlayer = null;
       renderHostRoleView(null);
     }
+    renderHostCharacterList();
     updateSessionResultDisplay();
     renderPlayers(players);
     renderGamePlayerStatus(players);
@@ -2036,6 +2069,7 @@ async function loadPlayers() {
     updateVoteStatus();
     updateHostReadyUI();
     updateHostVoteUI();
+    updateHostGameStatusBar();
     if (state.sessionRecordId) {
       try {
         const updated = await api.update("sessions", state.sessionRecordId, {
@@ -2410,6 +2444,44 @@ function renderHostRoleView(player) {
   briefingBlock.append(briefingTitle, briefingText);
   container.appendChild(briefingBlock);
 
+  // 개인 시각적 증거 표시 (단계별로 공개)
+  const unlockedRoundsForEvidence = getUnlockedRounds(cluePackage);
+  const currentVisualEvidence = [];
+  unlockedRoundsForEvidence.forEach(round => {
+    if (round.visualEvidence && round.visualEvidence.length > 0) {
+      currentVisualEvidence.push(...round.visualEvidence);
+    }
+  });
+
+  if (currentVisualEvidence.length > 0) {
+    const evidenceSection = document.createElement("div");
+    evidenceSection.className = "role-view__section";
+    const evidenceTitle = document.createElement("h4");
+    evidenceTitle.textContent = "📋 나만 아는 증거";
+    evidenceSection.appendChild(evidenceTitle);
+    
+    currentVisualEvidence.forEach(evidence => {
+      const evidenceCard = document.createElement("div");
+      evidenceCard.className = "visual-evidence-card";
+      
+      const evidenceHeader = document.createElement("div");
+      evidenceHeader.className = "visual-evidence-card__header";
+      evidenceHeader.innerHTML = `<strong>${evidence.title}</strong> <span class="badge">${evidence.type}</span>`;
+      
+      const evidenceDesc = document.createElement("p");
+      evidenceDesc.className = "visual-evidence-card__description";
+      evidenceDesc.textContent = evidence.description;
+      
+      const evidenceContent = document.createElement("div");
+      evidenceContent.className = "visual-evidence-card__content";
+      evidenceContent.innerHTML = evidence.html || "";
+      
+      evidenceCard.append(evidenceHeader, evidenceDesc, evidenceContent);
+      evidenceSection.appendChild(evidenceCard);
+    });
+    container.appendChild(evidenceSection);
+  }
+
   const rounds = getUnlockedRounds(cluePackage);
   if (rounds.length) {
     rounds.forEach((round, index) => {
@@ -2544,6 +2616,42 @@ function renderReadyAggregates(players = []) {
 
 function isStageReadySkipEligible(stageKey) {
   return isReadyVoteStage(stageKey);
+}
+
+function renderHostCharacterList() {
+  if (!dom.hostCharacterList || !state.activeScenario) {
+    return;
+  }
+  
+  dom.hostCharacterList.innerHTML = "";
+  
+  const allPersonas = [];
+  const scenario = state.activeScenario;
+  
+  if (scenario.roles) {
+    if (scenario.roles.detective) allPersonas.push(...scenario.roles.detective.map(p => ({...p, roleType: "탐정"})));
+    if (scenario.roles.culprit) allPersonas.push(...scenario.roles.culprit.map(p => ({...p, roleType: "범인"})));
+    if (scenario.roles.suspects) allPersonas.push(...scenario.roles.suspects.map(p => ({...p, roleType: "용의자"})));
+  }
+  
+  if (allPersonas.length === 0) {
+    dom.hostCharacterList.innerHTML = '<p class="placeholder">게임 시작 후 캐릭터 목록이 표시됩니다.</p>';
+    return;
+  }
+  
+  allPersonas.forEach(persona => {
+    const card = document.createElement("div");
+    card.className = "character-card";
+    card.innerHTML = `
+      <div class="character-card__header">
+        <span class="character-card__badge role-badge role-badge--${persona.roleType === '탐정' ? 'detective' : persona.roleType === '범인' ? 'culprit' : 'suspect'}">${persona.roleType}</span>
+      </div>
+      <div class="character-card__name">${persona.name}</div>
+      <div class="character-card__title">${persona.title || ""}</div>
+      <div class="character-card__briefing">${persona.briefing ? persona.briefing.substring(0, 80) + '...' : ""}</div>
+    `;
+    dom.hostCharacterList.appendChild(card);
+  });
 }
 
 async function resetPlayerReadiness(stageKey) {
@@ -2736,11 +2844,18 @@ async function sendBotClueMessages() {
       }
       
       // 3. 메시지 전송 (각 메시지를 개별적으로)
+      // role_type 결정
+      let roleType = null;
+      if (bot.role === "탐정") roleType = "detective";
+      else if (bot.role === "범인") roleType = "culprit";
+      else if (bot.role && bot.role.includes("용의자")) roleType = "suspect";
+      
       for (const message of messagesToSend) {
         await api.create("chat_messages", {
           session_code: state.activeSession.code,
           player_name: bot.name,
           role: bot.character || bot.role, // 배역 이름 사용
+          role_type: roleType,
           message: message,
           sent_at: new Date().toISOString()
         });
