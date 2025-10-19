@@ -888,14 +888,32 @@ async function transitionToStage(stageKey, options = {}) {
 
 function populateScenarioSelect() {
   dom.scenarioSelect.innerHTML = "";
+  
+  // 시나리오가 없으면 기본 메시지 표시
+  if (!scenarios || scenarios.length === 0) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "사건 세트를 불러오는 중...";
+    dom.scenarioSelect.appendChild(option);
+    return;
+  }
+  
   scenarios.forEach((scenario) => {
     const option = document.createElement("option");
     option.value = scenario.id;
     option.textContent = scenario.title;
     dom.scenarioSelect.appendChild(option);
   });
-  dom.scenarioSelect.value = state.activeScenario.id;
-  renderScenario(state.activeScenario);
+  
+  // activeScenario가 없으면 첫 번째 시나리오 설정
+  if (!state.activeScenario && scenarios.length > 0) {
+    state.activeScenario = scenarios[0];
+  }
+  
+  if (state.activeScenario) {
+    dom.scenarioSelect.value = state.activeScenario.id;
+    renderScenario(state.activeScenario);
+  }
 }
 
 async function hydrateRemoteScenarios() {
@@ -3039,6 +3057,9 @@ function attachEventListeners() {
 }
 
 async function initialise() {
+  console.log('초기화 시작 - scenarios 개수:', scenarios?.length);
+  console.log('첫 번째 시나리오:', scenarios?.[0]?.title);
+  
   populateScenarioSelect();
   attachEventListeners();
   await refreshHostResumeSessions();
