@@ -1,0 +1,175 @@
+{
+  "id": "example-office-crime",
+  "title": "사라진 기밀 문서",
+  "tagline": "회사 내부자의 배신, 24시간 안에 범인을 찾아라",
+  "difficulty": "중급",
+  "tone": "기업 스릴러",
+  "duration": "120분",
+  "playerRange": {
+    "min": 4,
+    "max": 6
+  },
+  "summary": "대기업 본사에서 중요한 기밀 문서가 사라졌다. CCTV는 정상 작동 중이었고, 출입 기록도 완벽하다. 범인은 내부 직원 중 한 명이 분명하다. 제한된 시간 안에 진실을 밝혀내야 한다.",
+  "motifs": [
+    "완벽한 출입 통제 시스템",
+    "내부자의 배신",
+    "숨겨진 동기"
+  ],
+  "conflicts": [
+    "누가 마지막으로 문서 보관함에 접근했는가?",
+    "CCTV 사각지대가 정말 없었는가?",
+    "문서는 어떻게 외부로 반출되었는가?"
+  ],
+  "prompts": [
+    "각자의 알리바이를 검증하라",
+    "출입 카드 기록과 증언의 불일치를 찾아라",
+    "누가 이득을 보는지 추적하라"
+  ],
+  "timeline": [
+    { "time": "09:00", "description": "전 직원 출근, 정상 업무 시작" },
+    { "time": "14:30", "description": "보안팀장이 문서 보관함 점검" },
+    { "time": "15:45", "description": "CEO가 긴급 회의 소집" },
+    { "time": "16:20", "description": "기밀 문서 분실 발견" },
+    { "time": "16:30", "description": "건물 봉쇄, 조사 시작" }
+  ],
+  "evidence": {
+    "physical": [
+      "복사기에서 발견된 문서 조각",
+      "사무실 쓰레기통의 소각된 메모",
+      "보관함 자물쇠의 미세한 긁힌 자국"
+    ],
+    "digital": [
+      "15:00~15:30 사이 CCTV 일시 중단 기록",
+      "출입 카드 로그의 중복 기록",
+      "삭제된 이메일 복구 내역"
+    ],
+    "visual": [
+      {
+        "type": "document",
+        "title": "출입 카드 로그",
+        "description": "사건 당일 오후 출입 기록, 의심스러운 패턴 발견",
+        "html": "<table style='border-collapse: collapse; width: 100%; font-family: monospace; font-size: 13px;'><thead><tr style='background: #2c3e50; color: white;'><th style='padding: 10px; border: 1px solid #555;'>시간</th><th style='padding: 10px; border: 1px solid #555;'>이름</th><th style='padding: 10px; border: 1px solid #555;'>위치</th></tr></thead><tbody><tr><td style='padding: 8px; border: 1px solid #ddd;'>14:25</td><td style='padding: 8px; border: 1px solid #ddd;'>김민수</td><td style='padding: 8px; border: 1px solid #ddd;'>5층 보안실</td></tr><tr style='background: #fff3cd;'><td style='padding: 8px; border: 1px solid #ddd;'>15:10</td><td style='padding: 8px; border: 1px solid #ddd; font-weight: bold; color: #d9534f;'>박지영</td><td style='padding: 8px; border: 1px solid #ddd;'>6층 문서보관실</td></tr><tr><td style='padding: 8px; border: 1px solid #ddd;'>15:45</td><td style='padding: 8px; border: 1px solid #ddd;'>이준호</td><td style='padding: 8px; border: 1px solid #ddd;'>4층 회의실</td></tr></tbody></table>"
+      },
+      {
+        "type": "message",
+        "title": "삭제된 문자 메시지",
+        "description": "범행 직전 주고받은 의심스러운 문자",
+        "html": "<div style='background: #f0f0f0; padding: 15px; border-radius: 10px; max-width: 300px; font-family: -apple-system, sans-serif;'><div style='background: #fff; padding: 12px; border-radius: 7px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);'><div style='font-size: 11px; color: #666; margin-bottom: 4px;'>수신: 알 수 없음</div><div style='font-size: 14px;'>오늘 3시에 약속한 대로 진행합니다.</div><div style='text-align: right; font-size: 11px; color: #999; margin-top: 4px;'>14:50</div></div><div style='background: #dcf8c6; padding: 12px; border-radius: 7px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);'><div style='font-size: 11px; color: #666; margin-bottom: 4px;'>발신: 알 수 없음</div><div style='font-size: 14px;'>확인. 준비 완료.</div><div style='text-align: right; font-size: 11px; color: #999; margin-top: 4px;'>14:52</div></div></div>"
+      }
+    ]
+  },
+  "characters": [
+    {
+      "name": "김민수",
+      "title": "보안팀장",
+      "description": "10년차 베테랑 보안 담당자. 출입 시스템을 총괄한다."
+    },
+    {
+      "name": "박지영",
+      "title": "비서실장",
+      "description": "CEO의 측근으로 기밀 문서 접근 권한이 있다."
+    },
+    {
+      "name": "이준호",
+      "title": "IT 관리자",
+      "description": "CCTV와 보안 시스템을 관리한다. 최근 승진 탈락으로 불만이 있었다."
+    },
+    {
+      "name": "최수진",
+      "title": "경영지원팀 과장",
+      "description": "문서 관리를 담당하며, 사건 당일 휴가였다고 주장한다."
+    }
+  ],
+  "roles": {
+    "detective": [
+      {
+        "name": "강대리",
+        "title": "사내 감사팀",
+        "briefing": "당신은 사내 감사를 담당합니다. 모든 증거를 수집하고 범인을 찾아내세요.",
+        "truths": [
+          "박지영의 출입 기록이 15:10에 문서보관실을 방문한 것으로 나와 있습니다.",
+          "CCTV가 꺼진 시간대에 누군가 보안실에 들어갔습니다."
+        ],
+        "misdirections": [
+          "이준호가 최근 경쟁사로부터 스카웃 제안을 받았다는 소문이 있습니다."
+        ],
+        "prompts": [
+          "각자의 알리바이를 확인하고 출입 기록과 대조하세요."
+        ]
+      }
+    ],
+    "culprit": [
+      {
+        "name": "박지영",
+        "title": "비서실장",
+        "briefing": "당신이 문서를 빼돌렸습니다. 경쟁사에 팔기 위해서였습니다. 알리바이를 철저히 준비하고 의심을 다른 사람에게 돌리세요.",
+        "truths": [
+          "당신은 15:10에 문서보관실에 들어가 문서를 가방에 넣었습니다.",
+          "김민수에게 CCTV를 잠시 끄게 한 것은 당신의 계획이었습니다."
+        ],
+        "misdirections": [
+          "이준호가 최근 돈 문제로 곤란을 겪고 있다는 것을 알고 있습니다.",
+          "최수진이 실제로는 휴가가 아니라 회사에 왔었다는 증거를 만들 수 있습니다."
+        ],
+        "prompts": [
+          "CEO의 지시로 급하게 문서를 확인하러 갔다고 주장하세요.",
+          "다른 사람들의 의심스러운 행동을 부각시키세요."
+        ],
+        "exposed": [
+          "당신의 가방에서 문서 조각이 발견될 수 있습니다.",
+          "경쟁사 담당자와의 통화 기록이 있습니다."
+        ]
+      }
+    ],
+    "suspects": [
+      {
+        "name": "김민수",
+        "title": "보안팀장",
+        "summary": "보안 시스템을 관리하는 베테랑",
+        "briefing": "당신은 보안을 담당합니다. 박지영이 요청해서 CCTV를 잠시 껐지만, 그것이 범죄와 관련이 있을 줄은 몰랐습니다.",
+        "truths": [
+          "박지영이 CEO 지시라며 CCTV를 잠시 끄게 했습니다.",
+          "출입 기록에 이상한 점을 발견했지만 아직 보고하지 않았습니다."
+        ],
+        "misdirections": [
+          "이준호가 보안 시스템에 접근할 수 있는 마스터 키를 가지고 있습니다."
+        ],
+        "prompts": [
+          "박지영의 요청을 설명하되, 당신은 잘못이 없다고 주장하세요."
+        ]
+      },
+      {
+        "name": "이준호",
+        "title": "IT 관리자",
+        "summary": "시스템 관리 담당, 최근 승진 탈락",
+        "briefing": "당신은 IT를 담당합니다. 승진에서 탈락해 화가 났지만 범죄와는 무관합니다.",
+        "truths": [
+          "사건 당시 서버실에서 정기 점검을 하고 있었습니다.",
+          "CCTV 시스템에 누군가 접근한 로그를 발견했습니다."
+        ],
+        "misdirections": [
+          "최수진이 휴가라고 했지만 회사 근처에서 목격되었습니다."
+        ],
+        "prompts": [
+          "당신은 기술적으로 범행이 가능하지만 하지 않았다고 주장하세요."
+        ]
+      },
+      {
+        "name": "최수진",
+        "title": "경영지원팀 과장",
+        "summary": "문서 관리 담당, 사건 당일 휴가",
+        "briefing": "당신은 문서 관리를 담당하지만 사건 당일 휴가였습니다. 하지만 실제로는 회사 근처에 있었습니다.",
+        "truths": [
+          "휴가였지만 잊은 물건을 찾으러 회사에 왔습니다.",
+          "박지영이 문서보관실에서 나오는 것을 목격했습니다."
+        ],
+        "misdirections": [
+          "김민수와 박지영이 자주 비밀스럽게 대화하는 것을 봤습니다."
+        ],
+        "prompts": [
+          "회사에 왔던 것을 숨기려 했지만 결국 인정하고, 박지영을 의심하세요."
+        ]
+      }
+    ]
+  }
+}

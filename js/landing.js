@@ -87,27 +87,68 @@ function normaliseScenario(raw = {}) {
     imagePrompt: item?.imagePrompt || ""
   }));
   clone.characters = ensureArray(clone.characters);
+  
+  // roles 구조 정규화 - 다양한 형식 지원
   clone.roles = clone.roles || {};
-  clone.roles.detective = ensureArray(clone.roles.detective);
-  clone.roles.culprit = ensureArray(clone.roles.culprit);
-  clone.roles.suspects = ensureArray(clone.roles.suspects);
+  
+  // 배열 형식의 roles를 객체 형식으로 변환 (AI가 배열로 생성할 경우)
+  if (Array.isArray(clone.roles)) {
+    const rolesObj = { detective: [], culprit: [], suspects: [] };
+    clone.roles.forEach(role => {
+      const type = role.clues?.type || role.type || 'suspect';
+      if (type === 'detective') rolesObj.detective.push(role);
+      else if (type === 'culprit') rolesObj.culprit.push(role);
+      else rolesObj.suspects.push(role);
+    });
+    clone.roles = rolesObj;
+  }
+  
+  // clues 구조를 가진 새로운 형식 지원
   const normalisePersona = (persona = {}) => {
     const copy = { ...persona };
+    
+    // clues.rounds 형식을 기존 형식으로 변환
+    if (copy.clues && copy.clues.rounds && Array.isArray(copy.clues.rounds)) {
+      const allTruths = [];
+      const allMisdirections = [];
+      const allPrompts = [];
+      const allExposed = [];
+      
+      copy.clues.rounds.forEach(round => {
+        if (round.truths) allTruths.push(...ensureArray(round.truths));
+        if (round.misdirections) allMisdirections.push(...ensureArray(round.misdirections));
+        if (round.prompts) allPrompts.push(...ensureArray(round.prompts));
+        if (round.exposed) allExposed.push(...ensureArray(round.exposed));
+      });
+      
+      if (!copy.truths || !copy.truths.length) copy.truths = allTruths;
+      if (!copy.misdirections || !copy.misdirections.length) copy.misdirections = allMisdirections;
+      if (!copy.prompts || !copy.prompts.length) copy.prompts = allPrompts;
+      if (allExposed.length && (!copy.exposed || !copy.exposed.length)) copy.exposed = allExposed;
+      
+      // briefing이 없으면 clues.objective 사용
+      if (!copy.briefing && copy.clues.objective) {
+        copy.briefing = copy.clues.objective;
+      }
+    }
+    
     copy.truths = ensureArray(copy.truths);
     copy.misdirections = ensureArray(copy.misdirections);
     copy.prompts = ensureArray(copy.prompts);
-    if (copy.exposed !== undefined) {
+    if (copy.exposed !== undefined || copy.clues?.type === 'culprit') {
       copy.exposed = ensureArray(copy.exposed);
     }
+    
     return copy;
   };
-  clone.roles.detective = clone.roles.detective.map(normalisePersona);
-  clone.roles.culprit = clone.roles.culprit.map((persona) => {
+  
+  clone.roles.detective = ensureArray(clone.roles.detective).map(normalisePersona);
+  clone.roles.culprit = ensureArray(clone.roles.culprit).map((persona) => {
     const copy = normalisePersona(persona);
     copy.exposed = ensureArray(copy.exposed);
     return copy;
   });
-  clone.roles.suspects = clone.roles.suspects.map(normalisePersona);
+  clone.roles.suspects = ensureArray(clone.roles.suspects).map(normalisePersona);
   clone.playerRange = clone.playerRange || { min: 0, max: 0 };
   clone.playerRange.min = Number(clone.playerRange.min);
   clone.playerRange.max = Number(clone.playerRange.max);
@@ -262,8 +303,20 @@ function applyScenarioDraft(rawScenario, sourceLabel = "업로드") {
     console.log("[시나리오 빌더] 원본 데이터:", rawScenario);
     const scenario = rawScenario?.scenario || rawScenario;
     console.log("[시나리오 빌더] 추출된 시나리오:", scenario);
+    console.log("[시나리오 빌더] roles 구조 확인:", {
+      hasRoles: !!scenario.roles,
+      detective: scenario.roles?.detective?.length || 0,
+      culprit: scenario.roles?.culprit?.length || 0,
+      suspects: scenario.roles?.suspects?.length || 0,
+      rolesKeys: scenario.roles ? Object.keys(scenario.roles) : []
+    });
     const normalised = normaliseScenario(scenario);
     console.log("[시나리오 빌더] 정규화된 시나리오:", normalised);
+    console.log("[시나리오 빌더] 정규화 후 roles:", {
+      detective: normalised.roles?.detective?.length || 0,
+      culprit: normalised.roles?.culprit?.length || 0,
+      suspects: normalised.roles?.suspects?.length || 0
+    });
     const validation = validateScenarioDraft(normalised);
     console.log("[시나리오 빌더] 유효성 검사 결과:", validation);
     if (!validation.valid) {
