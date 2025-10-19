@@ -1,5 +1,7 @@
 import { firebaseList, firebaseCreate, firebaseUpdate, firebaseRemove } from './firebase.js';
 
+const REMOTE_ALLOWED_HOSTS = ["zippy-bonbon-5a7dd7.netlify.app", "localhost", "127.0.0.1"];
+
 function buildBaseUrl() {
   const defaultBase = "https://zippy-bonbon-5a7dd7.netlify.app";
   if (typeof window === "undefined") {
