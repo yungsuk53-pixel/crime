@@ -100,10 +100,18 @@ function showToast(message, variant = "info") {
 }
 
 function renderRoster(roster = []) {
-  if (!dom.playerRoster) return;
+  console.log('[Roster] renderRoster 호출됨, 플레이어 수:', roster?.length || 0);
+  
+  if (!dom.playerRoster) {
+    console.error('[Roster] playerRoster DOM 요소를 찾을 수 없습니다');
+    return;
+  }
+  
   dom.playerRoster.innerHTML = "";
   roster = roster || [];
+  
   if (!roster.length) {
+    console.log('[Roster] 참가자가 없습니다');
     const placeholder = document.createElement("p");
     placeholder.className = "placeholder";
     placeholder.textContent = "아직 참가자가 없습니다.";
@@ -145,6 +153,7 @@ function renderRoster(roster = []) {
     });
 
   dom.playerRoster.appendChild(list);
+  console.log('[Roster] 렌더링 완료:', roster.length, '명');
 }
 
 function renderTimeline(element, entries = []) {
@@ -1270,7 +1279,12 @@ function stopPolling() {
 }
 
 function startPolling() {
-  if (!state.sessionCode || !state.playerRecordId) return;
+  if (!state.sessionCode || !state.playerRecordId) {
+    console.warn('[Polling] 시작 불가: sessionCode 또는 playerRecordId 없음');
+    return;
+  }
+
+  console.log('[Polling] 시작:', state.sessionCode);
 
   state.chatInterval = setInterval(() => {
     loadChatMessages(state.sessionCode);
@@ -1292,49 +1306,63 @@ function startPolling() {
     sendHeartbeat();
   }, 20000);
 
+  // 즉시 첫 로드 실행
+  console.log('[Polling] 초기 데이터 로드 시작');
   refreshSessionState();
   refreshPlayerState();
+  loadRoster();
 }
 
 async function refreshSessionState() {
   if (!state.sessionCode) return;
   const latest = await findSessionByCode(state.sessionCode);
-  if (!latest) return;
+  if (!latest) {
+    console.warn('세션을 찾을 수 없습니다:', state.sessionCode);
+    return;
+  }
+  
   const stageChanged = state.session?.stage !== latest.stage;
   const deadlineChanged = state.session?.stage_deadline_at !== latest.stage_deadline_at;
-  state.session = latest;
+  
+  // 기존 세션 데이터와 병합
+  state.session = {
+    ...state.session,
+    ...latest
+  };
 
   const scenario = getScenarioById(latest.scenario_id);
   const previousScenarioId = state.activeScenario?.id;
   state.activeScenario = scenario || state.activeScenario;
+  
   if (scenario && previousScenarioId !== scenario.id) {
     renderScenario(scenario);
     if (state.player) {
       renderRoleView(state.player);
     }
   }
-  renderSessionMeta(latest, scenario);
-  renderLobbyStatus(latest, state.player);
-  updateStageTracker(latest.stage);
+  
+  renderSessionMeta(state.session, scenario);
+  renderLobbyStatus(state.session, state.player);
+  updateStageTracker(state.session.stage);
 
-  if (deadlineChanged && latest.auto_stage_enabled) {
-    updateCountdown(latest.stage_deadline_at);
+  if (deadlineChanged && state.session.auto_stage_enabled) {
+    updateCountdown(state.session.stage_deadline_at);
   }
 
   if (stageChanged) {
     if (state.player) {
       state.player.stage_ready = false;
-      state.player.ready_stage = latest.stage;
+      state.player.ready_stage = state.session.stage;
     }
     renderRoleView(state.player);
     updateVoteUI();
-    if (latest.stage === "result") {
-      renderVoteOutcome(latest);
+    if (state.session.stage === "result") {
+      renderVoteOutcome(state.session);
     }
   }
 
-  if (latest.stage === "result") {
-    renderVoteOutcome(latest);
+  if (state.session.stage === "result") {
+    renderVoteOutcome(state.session);
   }
 
   updateReadyUI();
@@ -1344,13 +1372,24 @@ async function refreshPlayerState() {
   if (!state.sessionCode || !state.player?.name) return;
   const player = await fetchPlayerRecord(state.sessionCode, state.player.name);
   if (!player) return;
+  
   const roleChanged = player.role && player.role !== state.player.role;
   const clueChanged = player.clue_summary !== state.player.clue_summary;
   const voteChanged =
     player.has_voted !== state.player.has_voted || player.vote_target !== state.player.vote_target;
 
-  state.player = player;
-  renderRoleView(player);
+  // 기존 데이터와 새 데이터 병합
+  state.player = {
+    ...state.player,
+    ...player
+  };
+  
+  // 플레이어 레코드 ID 보존
+  if (state.playerRecordId && !state.player.id) {
+    state.player.id = state.playerRecordId;
+  }
+  
+  renderRoleView(state.player);
   updateReadyUI();
 
   if (roleChanged && state.lastRoleNotified !== player.role) {
@@ -1375,25 +1414,47 @@ function getPlayerNameById(playerId) {
 }
 
 async function loadRoster() {
-  if (!state.sessionCode) return;
+  if (!state.sessionCode) {
+    console.warn('[Roster] 세션 코드가 없습니다');
+    return;
+  }
+  
   try {
+    console.log('[Roster] 로딩 시작:', state.sessionCode);
     const data = await api.list("players", { search: state.sessionCode, limit: "100" });
-    const newRoster = (data?.data || []).filter((item) => !item.deleted && item.session_code === state.sessionCode);
+    
+    if (!data || !data.data) {
+      console.warn('[Roster] 데이터가 없습니다');
+      renderRoster([]);
+      return;
+    }
+    
+    const newRoster = data.data.filter((item) => !item.deleted && item.session_code === state.sessionCode);
+    console.log('[Roster] 필터링된 플레이어:', newRoster.length, '명');
     
     // 로스터 해시 생성 (변경 감지용)
-    const newHash = JSON.stringify(newRoster.map(p => ({ id: p.id, name: p.name, role: p.role, has_voted: p.has_voted, stage_ready: p.stage_ready })));
+    const newHash = JSON.stringify(newRoster.map(p => ({ 
+      id: p.id, 
+      name: p.name, 
+      role: p.role, 
+      has_voted: p.has_voted, 
+      stage_ready: p.stage_ready 
+    })));
     
     // 변경된 경우에만 렌더링
     if (newHash !== state.lastRosterHash) {
+      console.log('[Roster] 변경 감지, 렌더링 시작');
       state.roster = newRoster;
       state.lastRosterHash = newHash;
       renderRoster(state.roster);
       updateReadyUI();
       updateVoteUI();
+    } else {
+      console.log('[Roster] 변경 없음, 렌더링 스킵');
     }
   } catch (error) {
-    console.error("로스터 로드 실패", error);
-    if (!state.roster.length) {
+    console.error("[Roster] 로드 실패:", error);
+    if (!state.roster || !state.roster.length) {
       renderRoster([]);
     }
   }
