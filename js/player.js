@@ -57,6 +57,7 @@ const dom = {
   evidencePhysical: document.getElementById("playerEvidencePhysical"),
   evidenceDigital: document.getElementById("playerEvidenceDigital"),
   lobbyStatus: document.getElementById("lobbyStatus"),
+  playerRoster: document.getElementById("playerRoster"),
   chatLog: document.getElementById("playerChatLog"),
   chatForm: document.getElementById("playerChatForm"),
   chatMessage: document.getElementById("playerChatMessage"),
@@ -97,20 +98,51 @@ function showToast(message, variant = "info") {
   }, 2600);
 }
 
-function renderList(element, items = []) {
-  if (!element) return;
-  element.innerHTML = "";
-  if (!items.length) {
-    const li = document.createElement("li");
-    li.textContent = "자료가 없습니다.";
-    element.appendChild(li);
+function renderRoster(roster = []) {
+  if (!dom.playerRoster) return;
+  dom.playerRoster.innerHTML = "";
+  if (!roster.length) {
+    const placeholder = document.createElement("p");
+    placeholder.className = "placeholder";
+    placeholder.textContent = "아직 참가자가 없습니다.";
+    dom.playerRoster.appendChild(placeholder);
     return;
   }
-  items.forEach((item) => {
-    const li = document.createElement("li");
-    li.textContent = item;
-    element.appendChild(li);
-  });
+
+  const list = document.createElement("ul");
+  list.className = "player-list";
+
+  roster
+    .slice()
+    .sort((a, b) => {
+      if (a.is_host && !b.is_host) return -1;
+      if (!a.is_host && b.is_host) return 1;
+      if (a.is_bot !== b.is_bot) return Number(a.is_bot) - Number(b.is_bot);
+      return a.name.localeCompare(b.name, "ko-KR");
+    })
+    .forEach((player) => {
+      const item = document.createElement("li");
+      item.className = "player-list__item";
+      if (player.is_host) {
+        item.classList.add("player-list__item--host");
+      }
+      if (player.is_bot) {
+        item.classList.add("player-list__item--bot");
+      }
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "player-list__name";
+      nameSpan.textContent = player.name;
+
+      const roleSpan = document.createElement("span");
+      roleSpan.className = "player-list__role";
+      roleSpan.textContent = player.is_host ? "호스트" : player.is_bot ? "봇" : player.role || "참가자";
+
+      item.append(nameSpan, roleSpan);
+      list.appendChild(item);
+    });
+
+  dom.playerRoster.appendChild(list);
 }
 
 function renderTimeline(element, entries = []) {
@@ -1334,6 +1366,7 @@ async function loadRoster() {
   try {
     const data = await api.list("players", { search: state.sessionCode, limit: "100" });
     state.roster = (data.data || []).filter((item) => !item.deleted && item.session_code === state.sessionCode);
+    renderRoster(state.roster);
     updateReadyUI();
     updateVoteUI();
   } catch (error) {
