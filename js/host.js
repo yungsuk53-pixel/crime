@@ -2716,6 +2716,10 @@ function renderHostCharacterList() {
     // 이 캐릭터를 맡은 플레이어 찾기
     const assignedPlayer = state.players.find(p => p.character === persona.name);
     
+    // 중립적인 캐릭터 정보 가져오기
+    const neutralChar = scenario.characters?.find(c => c.name === persona.name);
+    const briefingText = neutralChar?.description || "";
+    
     const card = document.createElement("div");
     card.className = "character-card";
     card.innerHTML = `
@@ -2724,7 +2728,7 @@ function renderHostCharacterList() {
       </div>
       <div class="character-card__name">${persona.name}</div>
       ${assignedPlayer ? `<div class="character-card__player">플레이어: ${assignedPlayer.name}</div>` : '<div class="character-card__player">미배정</div>'}
-      <div class="character-card__briefing">${persona.briefing ? persona.briefing.substring(0, 80) + '...' : ""}</div>
+      <div class="character-card__briefing">${briefingText ? briefingText.substring(0, 80) + '...' : ""}</div>
     `;
     
     // 클릭 이벤트 추가
@@ -2738,14 +2742,20 @@ function renderHostCharacterList() {
 }
 
 function showHostCharacterModal(persona, assignedPlayer) {
-  // 간단한 alert 대신 토스트로 정보 표시
+  // 시나리오의 중립적인 캐릭터 정보 찾기
+  const neutralChar = state.activeScenario?.characters?.find(c => c.name === persona.name);
+  
   const playerInfo = assignedPlayer ? `\n담당 플레이어: ${assignedPlayer.name}` : "\n담당 플레이어: 미배정";
+  
+  // 중립적인 정보만 표시 (역할 정보 제외)
+  const description = neutralChar?.description || "캐릭터 정보가 없습니다.";
+  
   const info = `
 캐릭터: ${persona.name}
 직함: ${persona.title || "없음"}${playerInfo}
 
-프로필:
-${persona.briefing || persona.summary || "정보가 없습니다."}
+배경:
+${description}
   `.trim();
   
   alert(info);

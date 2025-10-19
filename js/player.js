@@ -2030,6 +2030,9 @@ function renderCharacterList(scenario, players) {
     // 이 캐릭터를 맡은 플레이어 찾기
     const assignedPlayer = players?.find(p => p.character === persona.name);
     
+    // 중립적인 캐릭터 정보 가져오기 (역할 스포일러 방지)
+    const neutralChar = scenario.characters?.find(c => c.name === persona.name);
+    
     const card = document.createElement("div");
     card.className = "character-card";
     card.innerHTML = `
@@ -2039,25 +2042,25 @@ function renderCharacterList(scenario, players) {
       <div class="character-card__name">${persona.name}</div>
       ${assignedPlayer ? `<div class="character-card__player">플레이어: ${assignedPlayer.name}</div>` : '<div class="character-card__player">미배정</div>'}
     `;
-    card.addEventListener("click", () => showCharacterModal(persona, assignedPlayer));
+    card.addEventListener("click", () => showCharacterModal(neutralChar || persona, assignedPlayer));
     dom.characterList.appendChild(card);
   });
 }
 
 // 인물 프로필 모달 표시
-function showCharacterModal(persona, assignedPlayer) {
+function showCharacterModal(character, assignedPlayer) {
   if (!dom.characterModal || !dom.characterModalBody) return;
   
   dom.characterModalBody.innerHTML = `
     <div class="character-profile">
       <div class="character-profile__header">
-        <h2>${persona.name}</h2>
-        <p class="character-profile__title">${persona.title || ""}</p>
+        <h2>${character.name}</h2>
+        <p class="character-profile__title">${character.title || ""}</p>
         ${assignedPlayer ? `<p class="character-profile__player">플레이어: ${assignedPlayer.name}</p>` : '<p class="character-profile__player">미배정</p>'}
       </div>
       <div class="character-profile__body">
-        <h4>프로필</h4>
-        <p>${persona.briefing || persona.summary || "프로필 정보가 없습니다."}</p>
+        <h4>배경</h4>
+        <p>${character.description || character.summary || "캐릭터 정보가 없습니다."}</p>
       </div>
     </div>
   `;
