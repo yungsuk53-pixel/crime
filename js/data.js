@@ -738,7 +738,15 @@ export const SCENARIO_GENERATION_GUIDE = `
 ### 핵심 메커니즘
 - **역할 배정**: 각 플레이어는 고유한 persona(캐릭터)를 받음
 - **정보 비대칭**: 각자 다른 단서와 알리바이를 가짐
-- **점진적 공개**: 3단계에 걸쳐 단서가 순차적으로 공개됨
+- **고유 증거 시스템**: **각 캐릭터는 자신만 볼 수 있는 고유한 시각적 증거(visualEvidence)를 가짐**
+  - 증거는 게임 시작 시 미리 할당되며, 플레이어가 역할을 받는 순간부터 확인 가능
+  - 같은 증거를 여러 캐릭터가 공유하지 않음 (각자 다른 증거를 가짐)
+  - **증거도 3단계에 걸쳐 점진적으로 공개됨**: clue_a(1차), clue_b(2차), clue_c(3차/결정적)
+  - 예시: 
+    * clue_a 단계: 탐정A는 영수증, 범인은 아무것도 없음, 용의자1은 통화 내역
+    * clue_b 단계: 탐정A는 아무것도 없음, 범인은 협박 메시지, 용의자1은 아무것도 없음
+    * clue_c 단계: 탐정A는 CCTV 기록, 범인은 아무것도 없음, 용의자1은 증거 사진
+- **점진적 공개**: 3단계에 걸쳐 단서와 증거가 순차적으로 공개됨
 - **봇 참여**: 토론 단계마다 봇이 자신의 단서를 자동으로 채팅에 공유
 - **투표 시스템**: 모든 플레이어(봇 포함)가 범인 후보에게 투표
 - **승리 조건**: 범인이 최다 득표 시 시민 승리, 그 외 범인 승리
@@ -825,15 +833,35 @@ export const SCENARIO_GENERATION_GUIDE = `
         "keyConflicts": [
           "이 캐릭터가 경험하는 핵심 갈등이나 딜레마"
         ],
-        "visualEvidence": [
-          {
-            "type": "message|document|receipt",
-            "title": "이 캐릭터만 볼 수 있는 증거 제목",
-            "description": "증거 설명",
-            "html": "<div>HTML 코드</div>",
-            "imagePrompt": "이미지 생성 프롬프트"
-          }
-        ]
+        "visualEvidence": {
+          "clue_a": [
+            {
+              "type": "message|document|receipt",
+              "title": "1차 단계에서 공개될 증거 제목",
+              "description": "증거 설명",
+              "html": "<div>HTML 코드</div>",
+              "imagePrompt": "이미지 생성 프롬프트"
+            }
+          ],
+          "clue_b": [
+            {
+              "type": "timeline|cctv|photo",
+              "title": "2차 단계에서 공개될 증거 제목",
+              "description": "증거 설명",
+              "html": "<div>HTML 코드</div>",
+              "imagePrompt": "이미지 생성 프롬프트"
+            }
+          ],
+          "clue_c": [
+            {
+              "type": "forensic|contract|email",
+              "title": "3차(최종) 단계에서 공개될 결정적 증거",
+              "description": "증거 설명",
+              "html": "<div>HTML 코드</div>",
+              "imagePrompt": "이미지 생성 프롬프트"
+            }
+          ]
+        }
       }
     ],
     "culprit": [
@@ -863,15 +891,11 @@ export const SCENARIO_GENERATION_GUIDE = `
         "keyConflicts": [
           "범인이 직면한 심리적 압박이나 갈등"
         ],
-        "visualEvidence": [
-          {
-            "type": "message",
-            "title": "범인만 아는 증거",
-            "description": "증거 설명",
-            "html": "<div>HTML 코드</div>",
-            "imagePrompt": "이미지 프롬프트"
-          }
-        ]
+        "visualEvidence": {
+          "clue_a": [],
+          "clue_b": [],
+          "clue_c": []
+        }
       }
     ],
     "suspects": [
@@ -898,15 +922,11 @@ export const SCENARIO_GENERATION_GUIDE = `
         "keyConflicts": [
           "용의자가 직면한 딜레마나 비밀"
         ],
-        "visualEvidence": [
-          {
-            "type": "document",
-            "title": "개인 증거",
-            "description": "설명",
-            "html": "<div>HTML</div>",
-            "imagePrompt": "프롬프트"
-          }
-        ]
+        "visualEvidence": {
+          "clue_a": [],
+          "clue_b": [],
+          "clue_c": []
+        }
       }
     ]
   }
@@ -1142,9 +1162,15 @@ export const SCENARIO_GENERATION_GUIDE = `
 - [ ] misdirections가 자연스럽게 의심을 분산시키는가?
 - [ ] 단서들이 서로 연결되어 있는가?
 - [ ] 시각적 증거가 최소 3개 이상 포함되어 있는가?
+- [ ] **각 캐릭터가 고유한 visualEvidence를 가지고 있는가?** (같은 증거를 여러 사람이 공유하면 안됨)
+- [ ] **증거가 게임 시작 전 미리 할당되어, 플레이어가 역할을 받는 순간부터 볼 수 있는가?**
 
 ### 5. 시각적 증거 (매우 중요!)
 - [ ] 각 증거가 사건 해결에 실질적으로 기여하는가?
+- [ ] **각 캐릭터가 자신만의 고유한 증거를 최소 1개 이상 가지고 있는가?**
+- [ ] **증거가 다른 캐릭터와 중복되지 않는가?** (예: 탐정A는 영수증, 탐정B는 메시지)
+- [ ] **증거가 clue_a, clue_b, clue_c 단계별로 나눠져 있는가?** (단계마다 다른 증거 공개)
+- [ ] **visualEvidence가 객체 형식으로 정의되어 있는가?** (예: {clue_a: [...], clue_b: [...], clue_c: [...]})
 - [ ] HTML에 인라인 스타일이 완전히 포함되어 있는가? (클래스명만 있으면 안됨)
 - [ ] 배경색, 테두리, 패딩, 폰트 크기가 모두 명시되어 있는가?
 - [ ] 색상 대비가 충분한가? (회색 배경에 회색 글씨 금지)
@@ -1152,7 +1178,7 @@ export const SCENARIO_GENERATION_GUIDE = `
 - [ ] 중요 정보가 굵게, 색상, 크기로 강조되어 있는가?
 - [ ] box-shadow나 border로 입체감이 표현되어 있는가?
 - [ ] 증거 타입이 다양한가? (영수증, 메시지, 타임라인, CCTV 등)
-- [ ] 최소 3개 이상의 시각적 증거가 포함되어 있는가?
+- [ ] **전체 시나리오에 시각적 증거가 최소 3개 이상 포함되어 있으며, 각자에게 고유하게 분배되어 있는가?**
 
 ### 6. 게임 플레이
 - [ ] 브리핑 단계에서 충분한 정보를 제공하는가?
@@ -1223,15 +1249,19 @@ export const SCENARIO_GENERATION_GUIDE = `
         ],
         "suggestedQuestions": ["질문1", "질문2"],
         "keyConflicts": ["갈등1"],
-        "visualEvidence": [
-          {
-            "type": "document",
-            "title": "개인 증거",
-            "description": "설명",
-            "html": "<div>HTML</div>",
-            "imagePrompt": "프롬프트"
-          }
-        ]
+        "visualEvidence": {
+          "clue_a": [
+            {
+              "type": "document",
+              "title": "1차 단서 증거",
+              "description": "설명",
+              "html": "<div>HTML</div>",
+              "imagePrompt": "프롬프트"
+            }
+          ],
+          "clue_b": [],
+          "clue_c": []
+        }
       }
     ],
     "culprit": [
@@ -1246,15 +1276,19 @@ export const SCENARIO_GENERATION_GUIDE = `
         "timeline": [{"time": "18:00", "action": "범인의 실제 행동"}],
         "suggestedQuestions": ["질문1"],
         "keyConflicts": ["심리적 압박"],
-        "visualEvidence": [
-          {
-            "type": "message",
-            "title": "범인만 아는 증거",
-            "description": "설명",
-            "html": "<div>HTML</div>",
-            "imagePrompt": "프롬프트"
-          }
-        ]
+        "visualEvidence": {
+          "clue_a": [],
+          "clue_b": [
+            {
+              "type": "message",
+              "title": "2차 단서 증거",
+              "description": "설명",
+              "html": "<div>HTML</div>",
+              "imagePrompt": "프롬프트"
+            }
+          ],
+          "clue_c": []
+        }
       }
     ],
     "suspects": [
@@ -1268,15 +1302,22 @@ export const SCENARIO_GENERATION_GUIDE = `
         "timeline": [{"time": "18:00", "action": "용의자 행동"}],
         "suggestedQuestions": ["질문1"],
         "keyConflicts": ["비밀"],
-        "visualEvidence": [
-          {
-            "type": "receipt",
-            "title": "개인 증거",
-            "description": "설명",
-            "html": "<div>HTML</div>",
-            "imagePrompt": "프롬프트"
-          }
-        ]
+        "visualEvidence": {
+          "clue_a": [],
+          "clue_b": [],
+          "clue_c": [
+            {
+              "type": "receipt",
+              "title": "3차(결정적) 증거",
+              "description": "설명",
+              "html": "<div>HTML</div>",
+              "imagePrompt": "프롬프트"
+            }
+          ]
+        }
+      },
+      {
+        "name": "용의자2 이름",
       },
       {
         "name": "용의자2 이름",

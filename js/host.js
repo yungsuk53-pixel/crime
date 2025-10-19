@@ -1546,11 +1546,10 @@ function buildCluePackage(persona, type) {
       title: persona.title || ""
     },
     briefing: persona.briefing || persona.summary || "",
-    // 개인별 정보 추가
+    // 개인별 정보 추가 (시각적 증거는 제외, rounds에 포함될 것)
     timeline: persona.timeline || [],
     suggestedQuestions: persona.suggestedQuestions || [],
-    keyConflicts: persona.keyConflicts || [],
-    visualEvidence: persona.visualEvidence || []
+    keyConflicts: persona.keyConflicts || []
   };
 
   if (type === "culprit") {
@@ -1570,6 +1569,19 @@ function buildCluePackage(persona, type) {
     });
     if (persona.exposed?.length) {
       base.exposed = persona.exposed;
+    }
+  }
+
+  // 시각적 증거를 각 단계에 할당
+  if (persona.visualEvidence) {
+    if (Array.isArray(persona.visualEvidence)) {
+      // 구버전 호환성: 배열이면 첫 번째 단계에 모두 할당
+      rounds[0].visualEvidence = persona.visualEvidence;
+    } else {
+      // 새 버전: 객체 형식으로 단계별로 나눠져 있음
+      if (persona.visualEvidence.clue_a) rounds[0].visualEvidence = persona.visualEvidence.clue_a;
+      if (persona.visualEvidence.clue_b) rounds[1].visualEvidence = persona.visualEvidence.clue_b;
+      if (persona.visualEvidence.clue_c) rounds[2].visualEvidence = persona.visualEvidence.clue_c;
     }
   }
 
@@ -2707,10 +2719,17 @@ async function sendBotClueMessages() {
           if (currentRound.misdirections && currentRound.misdirections.length > 0) {
             messagesToSend.push(...currentRound.misdirections);
           }
+          
+          // 이 단계의 시각적 증거도 텍스트로 공유
+          if (currentRound.visualEvidence && currentRound.visualEvidence.length > 0) {
+            currentRound.visualEvidence.forEach(evidence => {
+              messagesToSend.push(`[증거: ${evidence.title}] ${evidence.description}`);
+            });
+          }
         }
       }
       
-      // 2. rounds가 없으면 기본 단서 사용
+      // 2. rounds가 없으면 기본 단서 사용 (구버전 호환성)
       if (messagesToSend.length === 0) {
         if (cluePackage.truths && cluePackage.truths.length > 0) {
           messagesToSend.push(...cluePackage.truths.slice(0, 2)); // 처음 2개만
@@ -2720,14 +2739,7 @@ async function sendBotClueMessages() {
         }
       }
       
-      // 3. 시각적 증거도 텍스트로 공유
-      if (cluePackage.visualEvidence && cluePackage.visualEvidence.length > 0) {
-        cluePackage.visualEvidence.forEach(evidence => {
-          messagesToSend.push(`[증거: ${evidence.title}] ${evidence.description}`);
-        });
-      }
-      
-      // 4. 메시지 전송 (각 메시지를 개별적으로)
+      // 3. 메시지 전송 (각 메시지를 개별적으로)
       for (const message of messagesToSend) {
         await api.create("chat_messages", {
           session_code: state.activeSession.code,

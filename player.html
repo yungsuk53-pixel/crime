@@ -59,11 +59,18 @@
                     </div>
                 </header>
 
+                <!-- 진행 현황 상단 고정 바 -->
+                <div class="game-status-bar" id="gameStatusBar" style="display: none;">
+                    <div class="game-status-bar__stage" id="currentStageLabel">대기실</div>
+                    <div class="game-status-bar__timer" id="stageTimer">--:--</div>
+                </div>
+
                 <div class="tab-nav" role="tablist">
                     <button class="tab-nav__btn tab-nav__btn--active" data-tab="lobby" type="button">대기실</button>
                     <button class="tab-nav__btn" data-tab="clues" type="button">내 단서</button>
                     <button class="tab-nav__btn" data-tab="profile" type="button">내 정보</button>
                     <button class="tab-nav__btn" data-tab="scenario" type="button">사건 정보</button>
+                    <button class="tab-nav__btn" data-tab="roles" type="button">인물 목록</button>
                     <button class="tab-nav__btn" data-tab="chat" type="button">채팅</button>
                     <button class="tab-nav__btn" data-tab="inventory" type="button">인벤토리</button>
                     <button class="tab-nav__btn" data-tab="vote" type="button">투표</button>
@@ -151,37 +158,19 @@
                             <h3 class="card__title" id="playerScenarioTitle">사건 정보</h3>
                             <p id="playerScenarioTagline" class="helper-text"></p>
                             <p id="playerScenarioSummary"></p>
-                            <div class="info-columns">
-                                <div>
-                                    <h4>핵심 갈등</h4>
-                                    <ul id="playerScenarioConflicts" class="list-number"></ul>
-                                </div>
-                                <div>
-                                    <h4>추천 질문</h4>
-                                    <ul id="playerScenarioPrompts" class="list-number"></ul>
-                                </div>
-                            </div>
                         </article>
                         <article class="card">
-                            <h3 class="card__title">타임라인</h3>
+                            <h3 class="card__title">사건 타임라인</h3>
+                            <p class="helper-text">사건이 발생한 시간대의 전체 흐름입니다.</p>
                             <ul class="timeline" id="playerScenarioTimeline"></ul>
                         </article>
+                    </section>
+
+                    <section class="tab-panel" data-tab="roles">
                         <article class="card">
-                            <h3 class="card__title">주요 증거</h3>
-                            <div class="evidence-grid">
-                                <div>
-                                    <h4>물적 증거</h4>
-                                    <ul id="playerEvidencePhysical" class="list-bullet"></ul>
-                                </div>
-                                <div>
-                                    <h4>디지털 & 기타</h4>
-                                    <ul id="playerEvidenceDigital" class="list-bullet"></ul>
-                                </div>
-                            </div>
-                            <div style="margin-top: 20px;">
-                                <h4>시각적 증거</h4>
-                                <div id="playerEvidenceVisual"></div>
-                            </div>
+                            <h3 class="card__title">등장인물 목록</h3>
+                            <p class="helper-text">이번 게임에 등장하는 모든 인물들입니다. 클릭하면 프로필을 볼 수 있습니다.</p>
+                            <div id="characterList" class="character-grid"></div>
                         </article>
                     </section>
 
@@ -221,10 +210,23 @@
                             <p class="helper-text" id="voteHelper">투표가 시작되면 선택지가 활성화됩니다.</p>
                             <div class="vote-result" id="playerVoteStatus"></div>
                         </article>
+                        <article class="card" id="gameResultCard" style="display: none;">
+                            <h3 class="card__title">🎭 게임 결과</h3>
+                            <div id="gameResult"></div>
+                        </article>
                     </section>
                 </div>
             </section>
         </main>
+
+        <!-- 인물 프로필 모달 -->
+        <div class="modal" id="characterModal" style="display: none;">
+            <div class="modal__overlay"></div>
+            <div class="modal__content">
+                <button class="modal__close" id="closeCharacterModal">&times;</button>
+                <div id="characterModalBody"></div>
+            </div>
+        </div>
 
         <footer class="footer">
             <div class="footer__content">

@@ -1634,3 +1634,221 @@ body {
     font-size: 0.85rem;
     color: rgba(196, 201, 255, 0.75);
 }
+
+/* 게임 상태바 */
+.game-status-bar {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, rgba(55, 89, 255, 0.18), rgba(160, 82, 255, 0.15));
+    border-bottom: 1px solid var(--color-border-strong);
+    backdrop-filter: blur(8px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.game-status-bar__label {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--color-text);
+}
+
+.game-status-bar__timer {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--color-primary-strong);
+    font-variant-numeric: tabular-nums;
+}
+
+/* 인물 카드 그리드 */
+.character-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    padding: 24px;
+}
+
+.character-card {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.character-card:hover {
+    border-color: var(--color-border-strong);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(10, 13, 30, 0.45);
+}
+
+.character-card__header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 8px;
+}
+
+.character-card__badge {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.character-card__name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin-bottom: 4px;
+}
+
+.character-card__title {
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+}
+
+/* 인물 프로필 모달 */
+.character-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+}
+
+.character-modal__overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.character-modal__content {
+    position: relative;
+    background: var(--color-card);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-soft);
+    z-index: 1;
+}
+
+.character-modal__close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: var(--color-text);
+    font-size: 1.5rem;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.character-modal__close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.character-profile__header {
+    text-align: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.character-profile__header h2 {
+    margin: 0 0 8px 0;
+    color: var(--color-text);
+}
+
+.character-profile__title {
+    color: var(--color-text-muted);
+    margin: 0 0 12px 0;
+}
+
+.character-profile__body {
+    line-height: 1.6;
+}
+
+.character-profile__body h4 {
+    color: var(--color-primary-strong);
+    margin-top: 20px;
+    margin-bottom: 12px;
+}
+
+/* 게임 결과 카드 */
+.game-result-card {
+    display: none;
+    background: var(--color-card-accent);
+    border: 2px solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    margin-top: 24px;
+}
+
+.game-result__section {
+    margin-bottom: 24px;
+}
+
+.game-result__section h4 {
+    color: var(--color-primary-strong);
+    margin-bottom: 12px;
+}
+
+.vote-results-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.vote-results-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.vote-results-list li:last-child {
+    border-bottom: none;
+}
+
+.culprit-reveal {
+    font-size: 1.1rem;
+    padding: 16px;
+    background: rgba(255, 118, 128, 0.15);
+    border-radius: var(--radius-sm);
+    border-left: 4px solid var(--color-secondary);
+}
+
+.game-result__verdict {
+    text-align: center;
+    padding: 24px;
+    background: linear-gradient(135deg, rgba(55, 89, 255, 0.12), rgba(160, 82, 255, 0.1));
+    border-radius: var(--radius-md);
+    margin-top: 24px;
+}
+
+.game-result__verdict h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.8rem;
+}
+
+.game-result__verdict p {
+    margin: 0;
+    color: var(--color-text-muted);
+}

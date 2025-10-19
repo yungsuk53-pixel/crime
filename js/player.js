@@ -52,12 +52,18 @@ const dom = {
   scenarioTitle: document.getElementById("playerScenarioTitle"),
   scenarioTagline: document.getElementById("playerScenarioTagline"),
   scenarioSummary: document.getElementById("playerScenarioSummary"),
-  scenarioConflicts: document.getElementById("playerScenarioConflicts"),
-  scenarioPrompts: document.getElementById("playerScenarioPrompts"),
   scenarioTimeline: document.getElementById("playerScenarioTimeline"),
-  evidencePhysical: document.getElementById("playerEvidencePhysical"),
-  evidenceDigital: document.getElementById("playerEvidenceDigital"),
-  evidenceVisual: document.getElementById("playerEvidenceVisual"),
+  // 새로 추가된 요소들
+  gameStatusBar: document.getElementById("gameStatusBar"),
+  currentStageLabel: document.getElementById("currentStageLabel"),
+  stageTimer: document.getElementById("stageTimer"),
+  characterList: document.getElementById("characterList"),
+  characterModal: document.getElementById("characterModal"),
+  characterModalBody: document.getElementById("characterModalBody"),
+  closeCharacterModal: document.getElementById("closeCharacterModal"),
+  gameResultCard: document.getElementById("gameResultCard"),
+  gameResult: document.getElementById("gameResult"),
+  // conflicts, prompts, evidence는 사건 정보에서 제거됨 (개인 단서로만 제공)
   lobbyStatus: document.getElementById("lobbyStatus"),
   playerRoster: document.getElementById("playerRoster"),
   chatLog: document.getElementById("playerChatLog"),
@@ -140,9 +146,9 @@ function renderRoster(roster = []) {
 
       const nameSpan = document.createElement("span");
       nameSpan.className = "player-list__name";
-      // 역할이 있으면 "이름(역할)" 형식으로 표시
-      if (player.role && !player.is_host && !player.is_bot) {
-        nameSpan.textContent = `${player.name}(${player.role})`;
+      // 역할 정보는 표시하지 않음 (배역 이름만)
+      if (player.character && !player.is_host && !player.is_bot) {
+        nameSpan.textContent = `${player.name} (${player.character})`;
       } else {
         nameSpan.textContent = player.name;
       }
@@ -752,9 +758,10 @@ function renderRoleView(player) {
   const header = document.createElement("div");
   header.className = "role-view__header";
 
-  const badge = document.createElement("span");
-  badge.className = getRoleBadgeClass(player.role);
-  badge.textContent = player.role || "미배정";
+  // 역할(탐정/범인/용의자) 정보는 표시하지 않음
+  // const badge = document.createElement("span");
+  // badge.className = getRoleBadgeClass(player.role);
+  // badge.textContent = player.role || "미배정";
 
   const title = document.createElement("p");
   title.className = "role-view__title";
@@ -767,7 +774,7 @@ function renderRoleView(player) {
   subtitle.className = "role-view__subtitle";
   subtitle.textContent = `${player.name}${player.is_host ? " (호스트)" : ""}`;
 
-  header.append(badge, title);
+  header.append(title); // badge 제거
   if (subtitle.textContent) {
     header.appendChild(subtitle);
   }
@@ -848,15 +855,23 @@ function renderRoleView(player) {
     container.appendChild(conflictsSection);
   }
 
-  // 개인 시각적 증거 표시
-  if (cluePackage.visualEvidence && cluePackage.visualEvidence.length > 0) {
+  // 개인 시각적 증거 표시 (단계별로 공개)
+  const unlockedRoundsForEvidence = getUnlockedRounds(cluePackage);
+  const currentVisualEvidence = [];
+  unlockedRoundsForEvidence.forEach(round => {
+    if (round.visualEvidence && round.visualEvidence.length > 0) {
+      currentVisualEvidence.push(...round.visualEvidence);
+    }
+  });
+
+  if (currentVisualEvidence.length > 0) {
     const evidenceSection = document.createElement("div");
     evidenceSection.className = "role-view__section";
     const evidenceTitle = document.createElement("h4");
     evidenceTitle.textContent = "📋 나만 아는 증거";
     evidenceSection.appendChild(evidenceTitle);
     
-    cluePackage.visualEvidence.forEach(evidence => {
+    currentVisualEvidence.forEach(evidence => {
       const evidenceCard = document.createElement("div");
       evidenceCard.className = "visual-evidence-card";
       
@@ -972,6 +987,15 @@ function updateStageTracker(stageKey) {
     item.classList.toggle("stage-tracker__item--active", item.dataset.stage === stageKey);
   });
   updateStageBadge(stageKey);
+  
+  // 상단 상태바 업데이트
+  if (state.session && state.session.stage_end_at) {
+    const remainingMs = state.session.stage_end_at - Date.now();
+    const remainingSeconds = Math.max(0, Math.floor(remainingMs / 1000));
+    updateGameStatusBar(stageKey, remainingSeconds);
+  } else {
+    updateGameStatusBar(stageKey);
+  }
 }
 
 function formatStatusText(status) {
@@ -1045,6 +1069,10 @@ function updateCountdown(deadlineIso) {
       return;
     }
     valueEl.textContent = `${formatCountdown(diff)} 남음`;
+    
+    // 상단 상태바 타이머도 업데이트
+    const remainingSeconds = Math.max(0, Math.floor(diff / 1000));
+    updateGameStatusBar(state.session?.stage, remainingSeconds);
   };
   tick();
   state.countdownInterval = setInterval(tick, 1000);
@@ -1114,18 +1142,11 @@ function renderScenario(scenario) {
   dom.scenarioTagline.textContent = scenario.tagline || "";
   dom.scenarioSummary.textContent = scenario.summary || "";
   
-  // conflicts와 prompts는 배열이어야 함
-  renderList(dom.scenarioConflicts, Array.isArray(scenario.conflicts) ? scenario.conflicts : []);
-  renderList(dom.scenarioPrompts, Array.isArray(scenario.prompts) ? scenario.prompts : []);
-  
-  // timeline은 {time, description} 객체 배열이어야 함
+  // 타임라인만 표시 (사건의 전체 흐름)
   renderTimeline(dom.scenarioTimeline, Array.isArray(scenario.timeline) ? scenario.timeline : []);
   
-  // evidence 객체 안전하게 접근
-  const evidence = scenario.evidence || {};
-  renderList(dom.evidencePhysical, Array.isArray(evidence.physical) ? evidence.physical : []);
-  renderList(dom.evidenceDigital, Array.isArray(evidence.digital) ? evidence.digital : []);
-  renderVisualEvidence(dom.evidenceVisual, Array.isArray(evidence.visual) ? evidence.visual : []);
+  // conflicts, prompts, evidence는 표시하지 않음 (개인 단서로만 제공)
+  // 이 정보들은 각 플레이어의 역할에 따라 개별적으로 제공됨
 }
 
 function toggleChatAvailability(enabled) {
@@ -1500,6 +1521,7 @@ async function refreshSessionState() {
   
   if (scenario && previousScenarioId !== scenario.id) {
     renderScenario(scenario);
+    renderCharacterList(scenario, state.roster); // 인물 목록 렌더링
     if (state.player) {
       renderRoleView(state.player);
     }
@@ -1522,11 +1544,13 @@ async function refreshSessionState() {
     updateVoteUI();
     if (state.session.stage === "result") {
       renderVoteOutcome(state.session);
+      displayGameResult(state.session, state.roster, scenario); // 게임 결과 표시
     }
   }
 
   if (state.session.stage === "result") {
     renderVoteOutcome(state.session);
+    displayGameResult(state.session, state.roster, scenario); // 게임 결과 표시
   }
 
   updateReadyUI();
@@ -1607,6 +1631,7 @@ async function loadRoster() {
       state.roster = newRoster;
       state.lastRosterHash = newHash;
       renderRoster(state.roster);
+      renderCharacterList(state.activeScenario, state.roster); // 인물 목록도 업데이트
       updateReadyUI();
       updateVoteUI();
     }
@@ -1947,6 +1972,140 @@ async function initialise() {
   updateReadyUI();
   await hydrateRemoteScenarios();
   attemptAutoJoin();
+  
+  // 모달 닫기 이벤트
+  if (dom.closeCharacterModal) {
+    dom.closeCharacterModal.addEventListener("click", closeCharacterModal);
+  }
+  if (dom.characterModal) {
+    dom.characterModal.addEventListener("click", (e) => {
+      if (e.target === dom.characterModal) closeCharacterModal();
+    });
+  }
+}
+
+// 타이머 및 스테이지 표시 함수
+function updateGameStatusBar(stage, remainingSeconds) {
+  if (!dom.gameStatusBar || !dom.currentStageLabel || !dom.stageTimer) return;
+  
+  if (stage && stage !== "lobby") {
+    dom.gameStatusBar.style.display = "flex";
+    dom.currentStageLabel.textContent = stageLabels[stage] || stage;
+    
+    if (remainingSeconds !== undefined && remainingSeconds >= 0) {
+      const minutes = Math.floor(remainingSeconds / 60);
+      const seconds = remainingSeconds % 60;
+      dom.stageTimer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    } else {
+      dom.stageTimer.textContent = "--:--";
+    }
+  } else {
+    dom.gameStatusBar.style.display = "none";
+  }
+}
+
+// 인물 목록 렌더링
+function renderCharacterList(scenario, players) {
+  if (!dom.characterList || !scenario) return;
+  
+  dom.characterList.innerHTML = "";
+  
+  const allPersonas = [];
+  
+  if (scenario.roles) {
+    if (scenario.roles.detective) allPersonas.push(...scenario.roles.detective.map(p => ({...p, roleType: "탐정"})));
+    if (scenario.roles.culprit) allPersonas.push(...scenario.roles.culprit.map(p => ({...p, roleType: "범인"})));
+    if (scenario.roles.suspects) allPersonas.push(...scenario.roles.suspects.map(p => ({...p, roleType: "용의자"})));
+  }
+  
+  allPersonas.forEach(persona => {
+    const card = document.createElement("div");
+    card.className = "character-card";
+    card.innerHTML = `
+      <div class="character-card__header">
+        <span class="character-card__badge role-badge role-badge--${persona.roleType === '탐정' ? 'detective' : persona.roleType === '범인' ? 'culprit' : 'suspect'}">${persona.roleType}</span>
+      </div>
+      <div class="character-card__name">${persona.name}</div>
+      <div class="character-card__title">${persona.title || ""}</div>
+    `;
+    card.addEventListener("click", () => showCharacterModal(persona));
+    dom.characterList.appendChild(card);
+  });
+}
+
+// 인물 프로필 모달 표시
+function showCharacterModal(persona) {
+  if (!dom.characterModal || !dom.characterModalBody) return;
+  
+  dom.characterModalBody.innerHTML = `
+    <div class="character-profile">
+      <div class="character-profile__header">
+        <h2>${persona.name}</h2>
+        <p class="character-profile__title">${persona.title || ""}</p>
+        <span class="role-badge role-badge--${persona.roleType === '탐정' ? 'detective' : persona.roleType === '범인' ? 'culprit' : 'suspect'}">${persona.roleType}</span>
+      </div>
+      <div class="character-profile__body">
+        <h4>프로필</h4>
+        <p>${persona.briefing || persona.summary || "프로필 정보가 없습니다."}</p>
+      </div>
+    </div>
+  `;
+  
+  dom.characterModal.style.display = "block";
+}
+
+// 모달 닫기
+function closeCharacterModal() {
+  if (dom.characterModal) {
+    dom.characterModal.style.display = "none";
+  }
+}
+
+// 게임 결과 표시
+function displayGameResult(session, players, scenario) {
+  if (!dom.gameResult || !dom.gameResultCard) return;
+  
+  const votes = {};
+  players.forEach(p => {
+    if (p.vote_target) {
+      votes[p.vote_target] = (votes[p.vote_target] || 0) + 1;
+    }
+  });
+  
+  const sortedVotes = Object.entries(votes).sort((a, b) => b[1] - a[1]);
+  const topVoted = sortedVotes[0]?.[0];
+  
+  // 실제 범인 찾기
+  const culprit = players.find(p => p.role === "범인");
+  const isCulpritCaught = topVoted === culprit?.character || topVoted === culprit?.name;
+  
+  let resultHTML = `
+    <div class="game-result">
+      <div class="game-result__section">
+        <h4>📊 투표 결과</h4>
+        <ul class="vote-results-list">
+  `;
+  
+  sortedVotes.forEach(([character, count]) => {
+    resultHTML += `<li><strong>${character}</strong>: ${count}표</li>`;
+  });
+  
+  resultHTML += `
+        </ul>
+      </div>
+      <div class="game-result__section">
+        <h4>🎭 범인 공개</h4>
+        <p class="culprit-reveal">범인은 <strong>${culprit?.character || culprit?.name || "알 수 없음"}</strong>입니다!</p>
+      </div>
+      <div class="game-result__verdict">
+        <h3>${isCulpritCaught ? "🎉 시민 승리!" : "😈 범인 승리!"}</h3>
+        <p>${isCulpritCaught ? "범인을 찾아냈습니다!" : "범인이 탈출했습니다!"}</p>
+      </div>
+    </div>
+  `;
+  
+  dom.gameResult.innerHTML = resultHTML;
+  dom.gameResultCard.style.display = "block";
 }
 
 document.addEventListener("DOMContentLoaded", initialise);
