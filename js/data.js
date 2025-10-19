@@ -665,7 +665,27 @@ export function formatPlayerRange(range) {
 
 // 게임 세트 생성을 위한 AI 프롬프트 가이드
 export const SCENARIO_GENERATION_GUIDE = `
-# 고품질 범죄 추리 게임 시나리오 생성 가이드
+# 범죄 추리 게임 시나리오 생성 가이드
+
+🚨 **필독: 이 프롬프트를 읽고 반드시 아래 규칙을 지켜주세요!**
+
+⛔ **가장 흔한 오류: roles를 배열로 만드는 것**
+- ❌ 잘못된 예: { "roles": [{name: "탐정"}, {name: "범인"}] }
+- ✅ 올바른 예: { "roles": { "detective": [{...}], "culprit": [{...}], "suspects": [{...}, {...}] } }
+
+⚠️ **응답 형식: 순수 JSON만 반환 (설명이나 코드 블록 마커 없이)**
+- 추가 텍스트, 주석, 설명문 금지
+- 마크다운 코드 블록 사용 금지
+- JSON 객체만 응답
+
+## 🎯 필수 응답 형식 규칙
+
+1. 반드시 순수 JSON만 반환 (마크다운 코드 블록이나 설명문 제외)
+2. 모든 문자열은 큰따옴표 사용
+3. 배열은 [] 괄호 안에 작성
+4. 객체는 {} 중괄호 안에 작성
+5. 마지막 항목 뒤에 쉼표 제거
+6. roles 객체는 반드시 detective, culprit, suspects 배열 포함
 
 ## 🎮 게임 진행 시스템 이해
 
@@ -738,43 +758,69 @@ export const SCENARIO_GENERATION_GUIDE = `
       }
     ]
   },
-  "roles": [
+  "characters": [
     {
-      "persona": "한국식 이름 또는 캐릭터 이름",
-      "title": "구체적인 직책/역할 (예: 수석 프로듀서, 회계 담당자)",
-      "summary": "이 캐릭터의 배경과 사건과의 관계를 50자 내외로",
-      "briefing": "플레이어에게 주어지는 역할 설명 및 목표 (150자 내외)",
-      "clues": {
-        "type": "culprit|citizen",
-        "objective": "이 역할이 달성해야 할 구체적 목표",
-        "rounds": [
-          {
-            "stage": "clue_a|clue_b|clue_c",
-            "label": "1차 단서|2차 단서|3차 단서",
-            "truths": [
-              "이 캐릭터가 알고 있는 진실 (구체적이고 확인 가능한 정보)",
-              "다른 캐릭터를 의심하게 만들 수 있는 관찰 사항",
-              "사건 해결에 도움이 되는 결정적 단서"
-            ],
-            "misdirections": [
-              "다른 사람을 의심하게 만드는 정보",
-              "자신의 알리바이를 강화하는 정보",
-              "진실이지만 오해를 불러일으킬 수 있는 정보"
-            ],
-            "prompts": [
-              "이 단계에서 취해야 할 구체적 행동",
-              "다른 플레이어에게 물어봐야 할 질문",
-              "자신을 방어하거나 의심을 돌리는 전략"
-            ],
-            "exposed": [
-              "범인의 경우: 들킬 위험이 있는 약점이나 증거",
-              "시민의 경우: 오해받을 수 있는 행동이나 상황"
-            ]
-          }
+      "name": "캐릭터 이름",
+      "title": "직책/역할",
+      "description": "배경 설명"
+    }
+  ],
+  "roles": {
+    "detective": [
+      {
+        "name": "탐정 이름",
+        "title": "탐정 직함",
+        "briefing": "플레이어에게 주어지는 역할 설명 및 목표",
+        "truths": [
+          "구체적이고 확인 가능한 진실",
+          "사건 해결에 도움이 되는 결정적 단서"
+        ],
+        "misdirections": [
+          "다른 사람을 의심하게 만드는 정보"
+        ],
+        "prompts": [
+          "이 단계에서 취해야 할 구체적 행동"
         ]
       }
-    }
-  ]
+    ],
+    "culprit": [
+      {
+        "name": "범인 이름",
+        "title": "범인 직함",
+        "briefing": "범인의 브리핑 및 목표",
+        "truths": [
+          "범인이 알고 있는 진실"
+        ],
+        "misdirections": [
+          "다른 사람을 의심하게 만드는 정보",
+          "자신의 알리바이를 강화하는 정보"
+        ],
+        "prompts": [
+          "다른 플레이어에게 물어봐야 할 질문"
+        ],
+        "exposed": [
+          "들킬 위험이 있는 약점이나 증거"
+        ]
+      }
+    ],
+    "suspects": [
+      {
+        "name": "용의자 이름",
+        "title": "용의자 직함",
+        "summary": "용의자 배경 요약",
+        "briefing": "용의자 브리핑",
+        "truths": [
+          "이 캐릭터가 알고 있는 진실"
+        ],
+        "misdirections": [
+          "다른 사람을 의심하게 만드는 정보"
+        ],
+        "prompts": [
+          "토론을 유도할 질문"
+        ]
+      }
+    ]
+  }
 }
 \`\`\`
 
@@ -863,7 +909,54 @@ export const SCENARIO_GENERATION_GUIDE = `
 - **맥락**: 사건과의 연관성을 드러낼 수 있는 디테일 포함
 - **예시**: "A torn receipt on a wooden table, evening lighting, slight coffee stain on the corner, showing transaction time of 18:45, documentary photography style"
 
+## ⚠️ JSON 구조 필수 요구사항
+
+**반드시 다음을 확인하세요:**
+
+1. **roles 객체 구조**
+   - roles는 배열이 아닌 객체여야 함
+   - 반드시 3개의 키 포함: detective, culprit, suspects
+   - 각 키의 값은 배열이어야 함
+   
+2. **필수 배열 길이**
+   - roles.detective: 최소 1개 이상
+   - roles.culprit: 정확히 1개 (범인은 1명만)
+   - roles.suspects: 최소 2개 이상 (playerRange에 맞춰 조정)
+
+3. **각 역할 필수 필드**
+   - name: 캐릭터 이름 (문자열)
+   - title: 직함/역할 (문자열)
+   - briefing: 역할 설명 (문자열)
+   - truths: 진실 단서 배열 (최소 2개)
+   - misdirections: 혼동 정보 배열 (최소 1개)
+   - prompts: 행동 지침 배열 (최소 1개)
+   - exposed: 약점 배열 (culprit만 필수, 최소 1개)
+
+4. **올바른 JSON 형식**
+   \`\`\`
+   {
+     "roles": {
+       "detective": [ {...} ],
+       "culprit": [ {...} ],
+       "suspects": [ {...}, {...} ]
+     }
+   }
+   \`\`\`
+
+5. **잘못된 형식 (사용 금지)**
+   \`\`\`
+   { "roles": [ {...} ] }  ← 이렇게 배열로 만들면 안됨!
+   \`\`\`
+
 ## 🎯 고품질 시나리오 작성 체크리스트
+
+### 0. JSON 구조 검증 (최우선 확인!)
+- [ ] roles는 객체 형식인가? (roles: { detective: [...], culprit: [...], suspects: [...] })
+- [ ] detective 배열에 최소 1명 이상 있는가?
+- [ ] culprit 배열에 정확히 1명만 있는가?
+- [ ] suspects 배열에 최소 2명 이상 있는가?
+- [ ] 모든 역할에 truths(2개 이상), misdirections(1개 이상), prompts(1개 이상)가 있는가?
+- [ ] culprit에 exposed 배열(1개 이상)이 있는가?
 
 ### 1. 스토리 완성도
 - [ ] 사건의 동기가 명확하고 설득력 있는가?
@@ -934,6 +1027,86 @@ export const SCENARIO_GENERATION_GUIDE = `
   "imagePrompt": "A coffee-stained receipt from a cozy cafe, photographed on a wooden table, evening natural light, slightly crumpled, showing transaction details for two coffee drinks at 18:45, realistic texture, documentary photography style, shallow depth of field"
 }
 \`\`\`
+
+## ✅ 최종 검증: 완전한 시나리오 구조 예시
+
+**JSON 생성 전 반드시 이 구조를 따르세요:**
+
+\`\`\`
+{
+  "id": "unique-scenario-id",
+  "title": "시나리오 제목",
+  "description": "간단한 설명",
+  "playerRange": "4-6명",
+  "difficulty": 2,
+  "estimatedTime": "60분",
+  "setting": "배경 설명",
+  "crimeType": "살인",
+  "roles": {
+    "detective": [
+      {
+        "name": "탐정 이름",
+        "title": "직함",
+        "briefing": "역할 설명",
+        "truths": ["진실1", "진실2", "진실3"],
+        "misdirections": ["혼동1", "혼동2"],
+        "prompts": ["행동지침1", "행동지침2"]
+      }
+    ],
+    "culprit": [
+      {
+        "name": "범인 이름",
+        "title": "직함",
+        "briefing": "역할 설명",
+        "truths": ["진실1", "진실2"],
+        "misdirections": ["혼동1", "혼동2"],
+        "prompts": ["행동지침1", "행동지침2"],
+        "exposed": ["약점1", "약점2"]
+      }
+    ],
+    "suspects": [
+      {
+        "name": "용의자1 이름",
+        "title": "직함",
+        "briefing": "역할 설명",
+        "truths": ["진실1", "진실2"],
+        "misdirections": ["혼동1"],
+        "prompts": ["행동지침1"]
+      },
+      {
+        "name": "용의자2 이름",
+        "title": "직함",
+        "briefing": "역할 설명",
+        "truths": ["진실1", "진실2"],
+        "misdirections": ["혼동1"],
+        "prompts": ["행동지침1"]
+      }
+    ]
+  },
+  "visualEvidence": [
+    {
+      "type": "message",
+      "title": "증거 제목",
+      "description": "증거 설명",
+      "html": "<div>HTML 코드</div>",
+      "imagePrompt": "이미지 생성 프롬프트"
+    }
+  ]
+}
+\`\`\`
+
+**❌ 절대 하지 말아야 할 것:**
+- roles를 배열로 만들기: { "roles": [{...}] } ← 이것은 오류!
+- detective나 suspects 배열 비우기
+- culprit 배열에 2명 이상 넣기
+- truths, misdirections, prompts 중 하나라도 빈 배열로 두기
+- culprit의 exposed 필드 누락
+
+**✅ 반드시 해야 할 것:**
+- roles는 객체로: { "roles": { "detective": [...], "culprit": [...], "suspects": [...] } }
+- 각 배열에 최소 개수 이상의 역할 포함
+- 모든 문자열에 큰따옴표 사용
+- 순수 JSON만 반환 (주석이나 추가 텍스트 없이)
 
 이 가이드를 따라 고품질의 몰입감 있는 범죄 추리 게임을 만들어보세요!
 `;
