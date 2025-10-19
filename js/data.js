@@ -105,14 +105,14 @@ export const scenarios = [
     ],
     evidence: {
       physical: [
-        "무대 장치용 와이어가 절단된 흔적",
-        "피해자의 대본에서 찢겨나간 마지막 장면의 페이지",
-        "백스테이지 열쇠가 한 개 분실되어 보안 캐비넷이 강제로 열림"
+        { display: "무대 장치용 와이어가 절단된 흔적", time: "19:45", visualElements: ["와이어 사진"] },
+        { display: "피해자의 대본에서 찢겨나간 마지막 장면의 페이지", time: "19:40", visualElements: ["대본 페이지 사진"] },
+        { display: "백스테이지 열쇠가 한 개 분실되어 보안 캐비넷이 강제로 열림", time: "19:50", visualElements: ["열쇠 사진", "캐비넷 사진"] }
       ],
       digital: [
-        "무대 감시 카메라 19:20~19:30 공백 구간",
-        "피해자 휴대전화 메신저에 삭제된 음성 메시지",
-        "스트리밍 서버 로그에서 비인가 접속 시도 2회"
+        { display: "무대 감시 카메라 19:20~19:30 공백 구간", time: "19:20-19:30", visualElements: ["카메라 로그 스크린샷"] },
+        { display: "피해자 휴대전화 메신저에 삭제된 음성 메시지", time: "19:10", visualElements: ["메신저 스크린샷"] },
+        { display: "스트리밍 서버 로그에서 비인가 접속 시도 2회", time: "19:35", visualElements: ["서버 로그 스크린샷"] }
       ]
     },
     characters: [
@@ -286,14 +286,14 @@ export const scenarios = [
     ],
     evidence: {
       physical: [
-        "금고 앞 바닥에 남은 미세한 석유 얼룩",
-        "주최자 수첩에서 찢겨나간 익명 메모",
-        "위성 전화 배터리가 고의로 제거된 흔적"
+        { display: "금고 앞 바닥에 남은 미세한 석유 얼룩", time: "22:05", visualElements: ["석유 얼룩 사진"] },
+        { display: "주최자 수첩에서 찢겨나간 익명 메모", time: "21:10", visualElements: ["수첩 페이지 사진"] },
+        { display: "위성 전화 배터리가 고의로 제거된 흔적", time: "21:55", visualElements: ["전화 사진"] }
       ],
       digital: [
-        "주최자 노트북에 암호화된 거래 기록",
-        "비상 발전기 제어 패널 로그",
-        "참가자 중 한 명의 스마트워치 위치 기록"
+        { display: "주최자 노트북에 암호화된 거래 기록", time: "21:10", visualElements: ["노트북 스크린샷"] },
+        { display: "비상 발전기 제어 패널 로그", time: "21:40", visualElements: ["패널 로그 스크린샷"] },
+        { display: "참가자 중 한 명의 스마트워치 위치 기록", time: "21:35-22:05", visualElements: ["워치 로그 스크린샷"] }
       ]
     },
     characters: [
@@ -467,14 +467,14 @@ export const scenarios = [
     ],
     evidence: {
       physical: [
-        "루트킷가 저장된 마이크로 SD 카드",
-        "블랙아웃 구간에서 발견된 NFC 접속 장치",
-        "화물차 적재함에서 나온 은닉 서버 랙"
+        { display: "루트킷가 저장된 마이크로 SD 카드", time: "15:05", visualElements: ["SD 카드 사진"] },
+        { display: "블랙아웃 구간에서 발견된 NFC 접속 장치", time: "14:25", visualElements: ["NFC 장치 사진"] },
+        { display: "화물차 적재함에서 나온 은닉 서버 랙", time: "15:20", visualElements: ["서버 랙 사진"] }
       ],
       digital: [
-        "포렌식 이미지에서 발견된 변조 로그",
-        "SNS 제보로 수집된 용의자 동선",
-        "도청된 내부 통신 녹취"
+        { display: "포렌식 이미지에서 발견된 변조 로그", time: "15:05", visualElements: ["로그 스크린샷"] },
+        { display: "SNS 제보로 수집된 용의자 동선", time: "14:40", visualElements: ["SNS 스크린샷"] },
+        { display: "도청된 내부 통신 녹취", time: "14:25", visualElements: ["녹취 파일"] }
       ]
     },
     characters: [

@@ -59,8 +59,26 @@ function normaliseScenario(raw = {}) {
     description: item?.description ?? ""
   }));
   clone.evidence = clone.evidence || { physical: [], digital: [] };
-  clone.evidence.physical = ensureArray(clone.evidence.physical);
-  clone.evidence.digital = ensureArray(clone.evidence.digital);
+  clone.evidence.physical = ensureArray(clone.evidence.physical).map((item) => {
+    if (typeof item === "string") {
+      return { display: item, time: null, visualElements: [] };
+    }
+    return {
+      display: item.display || "",
+      time: item.time || null,
+      visualElements: ensureArray(item.visualElements || [])
+    };
+  });
+  clone.evidence.digital = ensureArray(clone.evidence.digital).map((item) => {
+    if (typeof item === "string") {
+      return { display: item, time: null, visualElements: [] };
+    }
+    return {
+      display: item.display || "",
+      time: item.time || null,
+      visualElements: ensureArray(item.visualElements || [])
+    };
+  });
   clone.characters = ensureArray(clone.characters);
   clone.roles = clone.roles || {};
   clone.roles.detective = ensureArray(clone.roles.detective);
@@ -125,6 +143,10 @@ function validateScenarioDraft(draft) {
   }
   if (!Array.isArray(draft.evidence.physical) || !Array.isArray(draft.evidence.digital)) {
     return { valid: false, message: "evidence.physical / digital 배열이 필요합니다." };
+  }
+  const hasValidEvidence = draft.evidence.physical.every((item) => item.display) && draft.evidence.digital.every((item) => item.display);
+  if (!hasValidEvidence) {
+    return { valid: false, message: "evidence 항목에 display 필드가 필요합니다." };
   }
   const roles = draft.roles;
   if (!roles || !roles.detective.length || !roles.culprit.length || !roles.suspects.length) {
@@ -191,11 +213,11 @@ function displayDraftScenario(draft) {
       <div class="scenario-preview__evidence">
         <div>
           <strong>물적 증거</strong>
-          ${renderList(draft.evidence.physical)}
+          ${renderList(draft.evidence.physical.map((item) => `${item.display}${item.time ? ` (${item.time})` : ""}${item.visualElements.length ? ` - ${item.visualElements.join(", ")}` : ""}`))}
         </div>
         <div>
           <strong>디지털 · 기타</strong>
-          ${renderList(draft.evidence.digital)}
+          ${renderList(draft.evidence.digital.map((item) => `${item.display}${item.time ? ` (${item.time})` : ""}${item.visualElements.length ? ` - ${item.visualElements.join(", ")}` : ""}`))}
         </div>
       </div>
     </section>
@@ -273,10 +295,18 @@ function buildPromptTemplate() {
       ],
       evidence: {
         physical: [
-          "<물적 증거>"
+          {
+            display: "<물적 증거 설명>",
+            time: "<발생 시간 예: 14:00>",
+            visualElements: ["<시각적 요소 예: 사진, 영수증>"]
+          }
         ],
         digital: [
-          "<디지털 또는 기타 증거>"
+          {
+            display: "<디지털 증거 설명>",
+            time: "<발생 시간>",
+            visualElements: ["<시각적 요소 예: 스크린샷, 로그>"]
+          }
         ]
       },
       characters: [
@@ -328,7 +358,7 @@ function buildPromptGuide() {
   return [
     "당신은 온라인 추리 게임을 위한 사건 세트를 작성하는 시나리오 전문가입니다.",
     "사용자가 제시한 주제만 입력하면 되도록 아래 조건을 모두 충족하는 JSON을 반환하세요.",
-    "- 필수 필드: id, title, tagline, difficulty, tone, duration, playerRange(min/max), summary, motifs, conflicts, prompts, timeline(시간 + 설명), evidence.physical/digital, characters, roles.detective/culprit/suspects.",
+    "- 필수 필드: id, title, tagline, difficulty, tone, duration, playerRange(min/max), summary, motifs, conflicts, prompts, timeline(시간 + 설명), evidence.physical/digital (각각 display, time, visualElements 포함), characters, roles.detective/culprit/suspects.",
     "- roles 섹션은 각 인물에 대한 truths / misdirections / prompts / exposed(범인만) 배열을 포함해야 합니다.",
     "- 모든 텍스트는 한국어로 작성하고, 배열은 공백 요소 없이 최소 2개 이상 채웁니다.",
     "- id는 소문자-케밥-케이스로 작성합니다.",

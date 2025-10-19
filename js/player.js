@@ -230,11 +230,14 @@ function buildPersonalProfile(player, cluePackage) {
   });
   const timeline = Array.from(timelineSet);
 
+  // 시간별 타임라인 추가
+  const timeBasedTimeline = scenario.timeline || [];
+
   const evidenceEntries = [];
-  const addEvidenceEntry = (display, detail) => {
+  const addEvidenceEntry = (display, detail, time = null, visualElements = []) => {
     if (!display) return;
     if (evidenceEntries.some((entry) => entry.display === display)) return;
-    evidenceEntries.push({ display, detail });
+    evidenceEntries.push({ display, detail, time, visualElements, alibis: [] });
   };
 
   const tokens = new Set();
@@ -270,8 +273,11 @@ function buildPersonalProfile(player, cluePackage) {
     ...(scenario.evidence?.digital || [])
   ];
   scenarioEvidence.forEach((item) => {
-    if (matchesTarget(item)) {
-      addEvidenceEntry(`공용 증거: ${item}`, item);
+    if (matchesTarget(item.display || item)) {
+      const display = item.display || item;
+      const time = item.time || null;
+      const visualElements = item.visualElements || [];
+      addEvidenceEntry(display, item.detail || item, time, visualElements);
     }
   });
 
@@ -304,19 +310,28 @@ function buildPersonalProfile(player, cluePackage) {
       return;
     }
     const trimmed = detail.length > 80 ? `${detail.slice(0, 77)}...` : detail;
-    alibiSet.add(`"${trimmed}" 라는 의심에는 상황은 인정하되 사건과 무관함을 강조하세요. 예) "맞아요, 그런 일이 있었지만 범행과는 아무 관련이 없어요."`);
+    const alibi = `"${trimmed}" 라는 의심에는 상황은 인정하되 사건과 무관함을 강조하세요. 예) "맞아요, 그런 일이 있었지만 범행과는 아무 관련이 없어요."`;
+    alibiSet.add(alibi);
+    // 해당 entry에 alibi 추가
+    const entry = evidenceEntries.find(e => e.detail === detail);
+    if (entry) {
+      entry.alibis.push(alibi);
+    }
     addedCounter += 1;
   });
 
   if (!alibiSet.size) {
-    alibiSet.add("행동의 이유를 침착하게 설명하고, 당시 알리바이나 증인을 준비해 두라고 팀에 공유하세요.");
+    const defaultAlibi = "행동의 이유를 침착하게 설명하고, 당시 알리바이나 증인을 준비해 두라고 팀에 공유하세요.";
+    alibiSet.add(defaultAlibi);
+    // evidence에 연결되지 않은 alibi는 별도 처리
   }
 
   const profile = {
     personaName,
     personaTitle,
     timeline,
-    evidence,
+    timeBasedTimeline,
+    evidence: evidenceEntries,
     alibis: Array.from(alibiSet)
   };
 
@@ -330,9 +345,39 @@ function renderPersonalProfile(profile) {
       ? `${profile.personaTitle ? `${profile.personaTitle} · ` : ""}${profile.personaName} 시점에서 정리된 개인 정보입니다.`
       : "역할이 확정되면 개인 정보가 표시됩니다.";
   }
-  renderListWithFallback(dom.profileTimeline, profile?.timeline || [], "타임라인 정보가 준비되지 않았습니다.");
-  renderListWithFallback(dom.profileEvidence, profile?.evidence || [], "나에 대한 특이 증거가 아직 보고되지 않았습니다.");
-  renderListWithFallback(dom.profileAlibis, profile?.alibis || [], "추천 변명이 준비되는 중입니다.");
+  renderTimeline(dom.profileTimeline, profile?.timeBasedTimeline || []);
+  renderEvidenceWithAlibis(dom.profileEvidence, profile?.evidence || []);
+}
+
+function renderEvidenceWithAlibis(element, entries = []) {
+  if (!element) return;
+  element.innerHTML = "";
+  if (!entries.length) {
+    const li = document.createElement("li");
+    li.textContent = "나에 대한 특이 증거가 아직 보고되지 않았습니다.";
+    element.appendChild(li);
+    return;
+  }
+  entries.forEach((entry) => {
+    const li = document.createElement("li");
+    let display = entry.display;
+    if (entry.time) {
+      display += ` (${entry.time})`;
+    }
+    if (entry.visualElements && entry.visualElements.length) {
+      display += ` - 시각적 요소: ${entry.visualElements.join(", ")}`;
+    }
+    li.textContent = display;
+    element.appendChild(li);
+    if (entry.alibis && entry.alibis.length) {
+      entry.alibis.forEach((alibi) => {
+        const subLi = document.createElement("li");
+        subLi.className = "evidence-alibi";
+        subLi.textContent = `변명: ${alibi}`;
+        element.appendChild(subLi);
+      });
+    }
+  });
 }
 
 function getRoleBadgeClass(role) {
