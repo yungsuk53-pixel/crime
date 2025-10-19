@@ -130,12 +130,10 @@ export async function saveScenarioSet(scenario) {
 export async function firebaseList(table, params = {}) {
   const libs = await loadFirebaseModules();
   if (!libs) {
-    console.error('[Firebase] 모듈을 로드할 수 없습니다');
     throw new Error("FIREBASE_UNAVAILABLE");
   }
   const db = await ensureDatabase();
   if (!db) {
-    console.error('[Firebase] 데이터베이스를 초기화할 수 없습니다');
     throw new Error("FIREBASE_UNAVAILABLE");
   }
   const { limit = 50, search = "" } = params;
@@ -143,21 +141,16 @@ export async function firebaseList(table, params = {}) {
     const tableRef = libs.ref(db, table);
     const snapshot = await libs.get(tableRef);
     
-    console.log(`[Firebase] ${table} 테이블 조회:`, snapshot.exists());
-    
     if (!snapshot.exists()) {
-      console.log(`[Firebase] ${table} 테이블이 비어있습니다`);
       return { data: [] };
     }
     const val = snapshot.val();
     if (!val || typeof val !== 'object') {
-      console.warn(`[Firebase] ${table} 데이터가 올바르지 않습니다:`, val);
       return { data: [] };
     }
     
     let data = Object.entries(val).map(([id, value]) => {
       if (!value || typeof value !== 'object') {
-        console.warn(`[Firebase] 잘못된 항목 발견:`, id, value);
         return null;
       }
       return { id, ...value };
@@ -184,9 +177,7 @@ export async function firebaseList(table, params = {}) {
       return timeB - timeA;
     });
     
-    const result = { data: data.slice(0, limit) };
-    console.log(`[Firebase] ${table} 조회 결과:`, result.data.length, '개 항목');
-    return result;
+    return { data: data.slice(0, limit) };
   } catch (error) {
     console.error(`[Firebase] ${table} 조회 실패:`, error);
     throw error;
@@ -196,12 +187,10 @@ export async function firebaseList(table, params = {}) {
 export async function firebaseCreate(table, data) {
   const libs = await loadFirebaseModules();
   if (!libs) {
-    console.error('[Firebase] 모듈을 로드할 수 없습니다');
     throw new Error("FIREBASE_UNAVAILABLE");
   }
   const db = await ensureDatabase();
   if (!db) {
-    console.error('[Firebase] 데이터베이스를 초기화할 수 없습니다');
     throw new Error("FIREBASE_UNAVAILABLE");
   }
   const now = new Date().toISOString();
@@ -212,13 +201,10 @@ export async function firebaseCreate(table, data) {
     deleted: false
   };
   try {
-    console.log(`[Firebase] ${table} 생성 시도:`, record);
     const tableRef = libs.ref(db, table);
     const newRef = libs.push(tableRef);
     await libs.set(newRef, record);
-    const result = { id: newRef.key, ...record };
-    console.log(`[Firebase] ${table} 생성 성공:`, result.id);
-    return result;
+    return { id: newRef.key, ...record };
   } catch (error) {
     console.error(`[Firebase] ${table} 생성 실패:`, error);
     throw error;
@@ -242,13 +228,11 @@ export async function firebaseUpdate(table, id, data) {
   try {
     const itemRef = libs.ref(db, `${table}/${id}`);
     
-    // 먼저 기존 데이터를 읽어옵니다
     const snapshot = await libs.get(itemRef);
     if (!snapshot.exists()) {
       throw new Error(`${table}/${id} not found`);
     }
     
-    // 기존 데이터와 업데이트 데이터를 병합
     const existingData = snapshot.val();
     const mergedData = {
       ...existingData,
@@ -256,12 +240,8 @@ export async function firebaseUpdate(table, id, data) {
       id
     };
     
-    // 업데이트 실행
     await libs.update(itemRef, updateData);
     
-    console.log(`[Firebase] ${table}/${id} 업데이트 성공`);
-    
-    // 병합된 전체 데이터 반환
     return mergedData;
   } catch (error) {
     console.error(`[Firebase] ${table} 업데이트 실패:`, error);

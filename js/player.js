@@ -100,8 +100,6 @@ function showToast(message, variant = "info") {
 }
 
 function renderRoster(roster = []) {
-  console.log('[Roster] renderRoster 호출됨, 플레이어 수:', roster?.length || 0);
-  
   if (!dom.playerRoster) {
     console.error('[Roster] playerRoster DOM 요소를 찾을 수 없습니다');
     return;
@@ -111,7 +109,6 @@ function renderRoster(roster = []) {
   roster = roster || [];
   
   if (!roster.length) {
-    console.log('[Roster] 참가자가 없습니다');
     const placeholder = document.createElement("p");
     placeholder.className = "placeholder";
     placeholder.textContent = "아직 참가자가 없습니다.";
@@ -153,7 +150,6 @@ function renderRoster(roster = []) {
     });
 
   dom.playerRoster.appendChild(list);
-  console.log('[Roster] 렌더링 완료:', roster.length, '명');
 }
 
 function renderTimeline(element, entries = []) {
@@ -184,6 +180,22 @@ function renderListWithFallback(element, items = [], fallbackMessage) {
   items.forEach((item) => {
     const li = document.createElement("li");
     li.textContent = item;
+    element.appendChild(li);
+  });
+}
+
+function renderList(element, items = []) {
+  if (!element) return;
+  element.innerHTML = "";
+  if (!items.length) {
+    const li = document.createElement("li");
+    li.textContent = "등록된 항목이 없습니다.";
+    element.appendChild(li);
+    return;
+  }
+  items.forEach((item) => {
+    const li = document.createElement("li");
+    li.textContent = typeof item === 'string' ? item : item.display || item;
     element.appendChild(li);
   });
 }
@@ -1280,11 +1292,8 @@ function stopPolling() {
 
 function startPolling() {
   if (!state.sessionCode || !state.playerRecordId) {
-    console.warn('[Polling] 시작 불가: sessionCode 또는 playerRecordId 없음');
     return;
   }
-
-  console.log('[Polling] 시작:', state.sessionCode);
 
   state.chatInterval = setInterval(() => {
     loadChatMessages(state.sessionCode);
@@ -1307,7 +1316,6 @@ function startPolling() {
   }, 20000);
 
   // 즉시 첫 로드 실행
-  console.log('[Polling] 초기 데이터 로드 시작');
   refreshSessionState();
   refreshPlayerState();
   loadRoster();
@@ -1317,7 +1325,6 @@ async function refreshSessionState() {
   if (!state.sessionCode) return;
   const latest = await findSessionByCode(state.sessionCode);
   if (!latest) {
-    console.warn('세션을 찾을 수 없습니다:', state.sessionCode);
     return;
   }
   
@@ -1415,22 +1422,19 @@ function getPlayerNameById(playerId) {
 
 async function loadRoster() {
   if (!state.sessionCode) {
-    console.warn('[Roster] 세션 코드가 없습니다');
     return;
   }
   
   try {
-    console.log('[Roster] 로딩 시작:', state.sessionCode);
     const data = await api.list("players", { search: state.sessionCode, limit: "100" });
     
     if (!data || !data.data) {
-      console.warn('[Roster] 데이터가 없습니다');
+      console.warn('[Roster] 데이터가 비어있습니다');
       renderRoster([]);
       return;
     }
     
     const newRoster = data.data.filter((item) => !item.deleted && item.session_code === state.sessionCode);
-    console.log('[Roster] 필터링된 플레이어:', newRoster.length, '명');
     
     // 로스터 해시 생성 (변경 감지용)
     const newHash = JSON.stringify(newRoster.map(p => ({ 
@@ -1443,14 +1447,11 @@ async function loadRoster() {
     
     // 변경된 경우에만 렌더링
     if (newHash !== state.lastRosterHash) {
-      console.log('[Roster] 변경 감지, 렌더링 시작');
       state.roster = newRoster;
       state.lastRosterHash = newHash;
       renderRoster(state.roster);
       updateReadyUI();
       updateVoteUI();
-    } else {
-      console.log('[Roster] 변경 없음, 렌더링 스킵');
     }
   } catch (error) {
     console.error("[Roster] 로드 실패:", error);
