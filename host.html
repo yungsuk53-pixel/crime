@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>크라임씬 호스트 콘솔</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -370,13 +373,6 @@
     </div>
 
     <dialog id="toast" class="toast" aria-live="assertive"></dialog>
-    <script>
-      // 캐시 무효화를 위한 타임스탬프 추가
-      const timestamp = Date.now();
-      const script = document.createElement('script');
-      script.type = 'module';
-      script.src = `js/host.js?v=${timestamp}`;
-      document.body.appendChild(script);
-    </script>
+    <script src="js/host.js?v=1760858563" type="module"></script>
 </body>
 </html>
