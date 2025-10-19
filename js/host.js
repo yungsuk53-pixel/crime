@@ -1166,14 +1166,18 @@ function updateHostGameStatusBar() {
     dom.hostStatusBarStage.textContent = stageLabel;
   }
 
-  const timerData = state.timers[stage];
-  if (dom.hostStatusBarTimer && timerData) {
-    const remaining = Math.max(0, timerData.remaining || 0);
-    const minutes = Math.floor(remaining / 60);
-    const seconds = remaining % 60;
-    dom.hostStatusBarTimer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  } else if (dom.hostStatusBarTimer) {
-    dom.hostStatusBarTimer.textContent = "-";
+  // 타이머 계산
+  if (dom.hostStatusBarTimer) {
+    const { stage_deadline_at, auto_stage_enabled } = state.activeSession;
+    if (auto_stage_enabled && stage_deadline_at) {
+      const diff = new Date(stage_deadline_at).getTime() - Date.now();
+      const remaining = Math.max(0, Math.floor(diff / 1000));
+      const minutes = Math.floor(remaining / 60);
+      const seconds = remaining % 60;
+      dom.hostStatusBarTimer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    } else {
+      dom.hostStatusBarTimer.textContent = "수동";
+    }
   }
 
   // 상태 바 항상 표시
@@ -2171,6 +2175,7 @@ function renderPlayers(players = []) {
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>${player.name}</td>
+        <td>${player.character || "미배정"}</td>
         <td>${formatPlayerStatus(player)}</td>
         <td>${formatReadyStatus(player)}</td>
         <td>${player.is_host ? "호스트" : player.is_bot ? "봇" : "플레이어"}</td>
