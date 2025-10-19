@@ -147,7 +147,8 @@ const state = {
   chatSessionCode: null,
   chatIdentity: null,
   isAssigningRoles: false,
-  readyInFlight: false
+  readyInFlight: false,
+  timers: {}
 };
 
 const HOST_STORAGE_KEY = "crimeSceneHostSession";
