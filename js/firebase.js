@@ -143,7 +143,11 @@ export async function firebaseList(table, params = {}) {
     if (!snapshot.exists()) {
       return { data: [] };
     }
-    let data = Object.entries(snapshot.val()).map(([id, value]) => ({ id, ...value }));
+    const val = snapshot.val();
+    if (!val) {
+      return { data: [] };
+    }
+    let data = Object.entries(val).map(([id, value]) => ({ id, ...value }));
     // Filter deleted items
     data = data.filter(item => !item.deleted);
     // Apply search filter

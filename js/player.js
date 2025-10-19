@@ -101,6 +101,7 @@ function showToast(message, variant = "info") {
 function renderRoster(roster = []) {
   if (!dom.playerRoster) return;
   dom.playerRoster.innerHTML = "";
+  roster = roster || [];
   if (!roster.length) {
     const placeholder = document.createElement("p");
     placeholder.className = "placeholder";
@@ -1365,12 +1366,13 @@ async function loadRoster() {
   if (!state.sessionCode) return;
   try {
     const data = await api.list("players", { search: state.sessionCode, limit: "100" });
-    state.roster = (data.data || []).filter((item) => !item.deleted && item.session_code === state.sessionCode);
+    state.roster = (data?.data || []).filter((item) => !item.deleted && item.session_code === state.sessionCode);
     renderRoster(state.roster);
     updateReadyUI();
     updateVoteUI();
   } catch (error) {
-    console.error(error);
+    console.error("로스터 로드 실패", error);
+    renderRoster([]);
   }
 }
 
