@@ -2796,7 +2796,7 @@ function populateHostVoteOptions() {
   const existingValue = dom.hostVoteTarget.value;
   dom.hostVoteTarget.innerHTML = "<option value=\"\">-- 대상을 선택하세요 --</option>";
   state.players
-    .filter((player) => !player.is_bot && player.id !== state.hostPlayerId)
+    .filter((player) => player.id !== state.hostPlayerId)
     .forEach((player) => {
       const option = document.createElement("option");
       option.value = player.id;
