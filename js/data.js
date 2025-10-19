@@ -11,6 +11,38 @@ export const stageLabels = {
   result: "결과 발표"
 };
 
+export function getStageLabel(stageKey, fallbackLabel) {
+  if (typeof stageKey === "string") {
+    const normalized = stageKey.trim();
+    if (normalized) {
+      return stageLabels[normalized] || normalized;
+    }
+  } else if (stageKey !== null && stageKey !== undefined) {
+    const stringKey = String(stageKey).trim();
+    if (stringKey) {
+      return stageLabels[stringKey] || stringKey;
+    }
+  }
+
+  if (typeof fallbackLabel === "string") {
+    const normalizedFallback = fallbackLabel.trim();
+    if (normalizedFallback) {
+      return normalizedFallback;
+    }
+  } else if (fallbackLabel !== null && fallbackLabel !== undefined) {
+    const fallbackString = String(fallbackLabel).trim();
+    if (fallbackString) {
+      return fallbackString;
+    }
+  }
+
+  return "-";
+}
+
+if (typeof window !== "undefined" && typeof window.getStageLabel !== "function") {
+  window.getStageLabel = getStageLabel;
+}
+
 export const stageOrder = [
   "lobby",
   "briefing",

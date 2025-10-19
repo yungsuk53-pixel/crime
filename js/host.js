@@ -3,7 +3,7 @@ import {
   scenarios,
   registerScenarios,
   getScenarioById,
-  stageLabels,
+  getStageLabel,
   stageOrder,
   formatPlayerRange,
   getStageDurationMs,
@@ -96,7 +96,7 @@ function populateRoundsWithClues(
 
   rounds.forEach((round, index) => {
     let total = round.truths.length + round.misdirections.length + round.prompts.length;
-    const stageLabel = stageLabels[round.stage] || round.label || "단계";
+    const stageLabel = getStageLabel(round.stage, round.label || "단계");
     while (total < minPerRound) {
       if (fallbackPool.length > 0) {
         const fallback = fallbackPool[(index + total) % fallbackPool.length];
@@ -274,7 +274,7 @@ async function refreshHostResumeSessions() {
 
   activeEntries.forEach(({ entry, session }) => {
     const scenario = getScenarioById(session.scenario_id) || state.activeScenario;
-    const stageLabel = stageLabels[session.stage] || session.stage || "-";
+    const stageLabel = getStageLabel(session.stage);
     const statusText = formatStatusText(session.status);
     const item = document.createElement("div");
     item.className = "list-resume__item";
@@ -731,7 +731,7 @@ function updateStageTimerDisplay() {
 
     const { stage, stage_deadline_at, auto_stage_enabled } = state.activeSession;
     if (labelEl) {
-      labelEl.textContent = `자동 진행 · ${stageLabels[stage] || stage}`;
+      labelEl.textContent = `자동 진행 · ${getStageLabel(stage)}`;
     }
 
     if (!auto_stage_enabled || getStageDurationMs(stage) === 0 || !stage_deadline_at) {
@@ -880,7 +880,7 @@ async function transitionToStage(stageKey, options = {}) {
   }
   
   if (!options.silent) {
-    showToast(`현재 단계가 '${stageLabels[stageKey] || stageKey}'(으)로 전환되었습니다.`, "info");
+    showToast(`현재 단계가 '${getStageLabel(stageKey)}'(으)로 전환되었습니다.`, "info");
   }
   startStageTimerLoop();
   return updated;
@@ -973,7 +973,7 @@ function updateStageTracker(stageKey) {
     dom.stageSelect.value = stageKey;
   }
   if (dom.progressStageBadge) {
-    dom.progressStageBadge.textContent = stageLabels[stageKey] || stageKey;
+    dom.progressStageBadge.textContent = getStageLabel(stageKey);
   }
 }
 
@@ -1046,7 +1046,7 @@ function updateSessionMeta() {
   if (dom.chatMeta) {
     dom.chatMeta.innerHTML = `
       <div><strong>세션 코드</strong><br>${code || "-"}</div>
-      <div><strong>현재 단계</strong><br>${stageLabels[stage] || stage || "-"}</div>
+      <div><strong>현재 단계</strong><br>${getStageLabel(stage)}</div>
       <div><strong>세션 상태</strong><br>${formatStatusText(status)}</div>
       <div><strong>자동 진행</strong><br>${autoMeta}</div>
       <div><strong>선택 사건</strong><br>${scenario?.title || "-"}</div>
@@ -1058,7 +1058,7 @@ function updateSessionMeta() {
   if (dom.gameMeta) {
     dom.gameMeta.innerHTML = `
       <div><strong>세션</strong> · ${code || "-"}</div>
-      <div><strong>현재 단계</strong> · ${stageLabels[stage] || stage || "-"}</div>
+      <div><strong>현재 단계</strong> · ${getStageLabel(stage)}</div>
       <div><strong>상태</strong> · ${formatStatusText(status)}</div>
       <div><strong>자동 진행</strong> · ${autoMeta}</div>
       <div><strong>참가자</strong> · ${player_count ?? state.players.length}명</div>
@@ -1110,7 +1110,7 @@ function updateHostGameStatusBar() {
   if (!state.activeSession || !dom.hostGameStatusBar) return;
 
   const stage = state.activeSession.stage || "lobby";
-  const stageLabel = stageLabels[stage] || stage;
+  const stageLabel = getStageLabel(stage);
 
   if (dom.hostStatusBarStage) {
     dom.hostStatusBarStage.textContent = stageLabel;
@@ -1520,7 +1520,7 @@ async function handleStageUpdate() {
   const status = stageStatusMap[stageKey] || state.activeSession.status;
   try {
     await transitionToStage(stageKey, { status, silent: true });
-    showToast(`현재 단계가 '${stageLabels[stageKey] || stageKey}'(으)로 변경되었습니다.`, "success");
+    showToast(`현재 단계가 '${getStageLabel(stageKey)}'(으)로 변경되었습니다.`, "success");
   } catch (error) {
     console.error(error);
     showToast("단계를 업데이트하지 못했습니다.", "error");
@@ -2152,7 +2152,7 @@ function formatReadyStatus(player) {
   if (player.is_bot) return "-";
   if (!player.stage_ready) return "대기";
   if (player.ready_stage) {
-    return `준비 (${stageLabels[player.ready_stage] || player.ready_stage})`;
+    return `준비 (${getStageLabel(player.ready_stage)})`;
   }
   return "준비";
 }
@@ -2608,7 +2608,7 @@ function renderReadyAggregates(players = []) {
     helperTexts.push(`동의한 플레이어: ${readyNames}`);
   }
   dom.gameReadyStatus.innerHTML = `
-    <strong>${stageLabels[stage] || stage}</strong><br>
+    <strong>${getStageLabel(stage)}</strong><br>
     ${readyPlayers.length} / ${eligiblePlayers} 명이 '턴 끝내기'에 투표했습니다.
     ${helperTexts.map((text) => `<p class="helper-text">${text}</p>`).join("")}
   `;
@@ -2698,7 +2698,7 @@ async function checkAndHandleStageReadyAdvance() {
   try {
     await transitionToStage(nextStage, { silent: true });
     showToast(
-      `턴 끝내기 투표가 충족되어 '${stageLabels[stage] || stage}' 단계를 종료합니다.`,
+      `턴 끝내기 투표가 충족되어 '${getStageLabel(stage)}' 단계를 종료합니다.`,
       "info"
     );
     await loadPlayers();
