@@ -58,7 +58,7 @@ function normaliseScenario(raw = {}) {
     time: item?.time ?? "",
     description: item?.description ?? ""
   }));
-  clone.evidence = clone.evidence || { physical: [], digital: [] };
+  clone.evidence = clone.evidence || { physical: [], digital: [], visual: [] };
   clone.evidence.physical = ensureArray(clone.evidence.physical).map((item) => {
     if (typeof item === "string") {
       return { display: item, time: null, visualElements: [] };
@@ -79,6 +79,13 @@ function normaliseScenario(raw = {}) {
       visualElements: ensureArray(item.visualElements || [])
     };
   });
+  clone.evidence.visual = ensureArray(clone.evidence.visual).map((item) => ({
+    type: item?.type || "document",
+    title: item?.title || "",
+    description: item?.description || "",
+    html: item?.html || "",
+    imagePrompt: item?.imagePrompt || ""
+  }));
   clone.characters = ensureArray(clone.characters);
   clone.roles = clone.roles || {};
   clone.roles.detective = ensureArray(clone.roles.detective);
@@ -147,6 +154,13 @@ function validateScenarioDraft(draft) {
   const hasValidEvidence = draft.evidence.physical.every((item) => item.display) && draft.evidence.digital.every((item) => item.display);
   if (!hasValidEvidence) {
     return { valid: false, message: "evidence 항목에 display 필드가 필요합니다." };
+  }
+  // visual 증거는 선택사항이므로 유효성 검사만 수행
+  if (draft.evidence.visual && Array.isArray(draft.evidence.visual)) {
+    const hasValidVisual = draft.evidence.visual.every((item) => item.type || item.title);
+    if (!hasValidVisual) {
+      return { valid: false, message: "visual 증거 항목에 type 또는 title이 필요합니다." };
+    }
   }
   const roles = draft.roles;
   if (!roles || !roles.detective.length || !roles.culprit.length || !roles.suspects.length) {
@@ -219,6 +233,12 @@ function displayDraftScenario(draft) {
           <strong>디지털 · 기타</strong>
           ${renderList(draft.evidence.digital.map((item) => `${item.display}${item.time ? ` (${item.time})` : ""}${item.visualElements.length ? ` - ${item.visualElements.join(", ")}` : ""}`))}
         </div>
+        ${draft.evidence.visual && draft.evidence.visual.length ? `
+        <div>
+          <strong>시각적 증거</strong>
+          ${renderList(draft.evidence.visual.map((item) => `${item.title || item.type}${item.description ? ` - ${item.description}` : ""}`))}
+        </div>
+        ` : ""}
       </div>
     </section>
     <section>
@@ -239,9 +259,13 @@ function displayDraftScenario(draft) {
 
 function applyScenarioDraft(rawScenario, sourceLabel = "업로드") {
   try {
+    console.log("[시나리오 빌더] 원본 데이터:", rawScenario);
     const scenario = rawScenario?.scenario || rawScenario;
+    console.log("[시나리오 빌더] 추출된 시나리오:", scenario);
     const normalised = normaliseScenario(scenario);
+    console.log("[시나리오 빌더] 정규화된 시나리오:", normalised);
     const validation = validateScenarioDraft(normalised);
+    console.log("[시나리오 빌더] 유효성 검사 결과:", validation);
     if (!validation.valid) {
       setBuilderStatus(validation.message, "warn");
       draftScenario = null;
@@ -252,7 +276,7 @@ function applyScenarioDraft(rawScenario, sourceLabel = "업로드") {
     displayDraftScenario(draftScenario);
     setBuilderStatus(`'${draftScenario.title}' 사건 초안을 ${sourceLabel}에서 불러왔습니다.`, "success");
   } catch (error) {
-    console.warn("시나리오 초안 적용 실패", error);
+    console.error("시나리오 초안 적용 실패:", error);
     setBuilderStatus("JSON을 해석하지 못했습니다. 형식을 다시 확인해 주세요.", "warn");
     draftScenario = null;
     displayDraftScenario(null);
