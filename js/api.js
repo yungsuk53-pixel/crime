@@ -1,4 +1,4 @@
-const REMOTE_ALLOWED_HOSTS = ["zippy-bonbon-5a7dd7.netlify.app", "localhost", "127.0.0.1"];
+import { firebaseList, firebaseCreate, firebaseUpdate, firebaseRemove } from './firebase.js';
 
 function buildBaseUrl() {
   const defaultBase = "https://zippy-bonbon-5a7dd7.netlify.app";
@@ -239,48 +239,25 @@ async function withFallback(remoteTask, fallbackTask) {
 export const api = {
   async list(table, params = {}) {
     return withFallback(
-      async () => {
-        const searchParams = new URLSearchParams({ limit: "50", ...params });
-        const response = await fetch(buildUrl(`/tables/${table}?${searchParams.toString()}`));
-        return handleRemoteResponse(response, "데이터를 불러오는 중 오류가 발생했습니다.");
-      },
+      async () => firebaseList(table, params),
       () => fallbackList(table, params)
     );
   },
   async create(table, data) {
     return withFallback(
-      async () => {
-        const response = await fetch(buildUrl(`/tables/${table}`), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data)
-        });
-        return handleRemoteResponse(response, "데이터를 생성하지 못했습니다.");
-      },
+      async () => firebaseCreate(table, data),
       () => fallbackCreate(table, data)
     );
   },
   async update(table, id, data) {
     return withFallback(
-      async () => {
-        const response = await fetch(buildUrl(`/tables/${table}/${id}`), {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data)
-        });
-        return handleRemoteResponse(response, "데이터를 수정하지 못했습니다.");
-      },
+      async () => firebaseUpdate(table, id, data),
       () => fallbackUpdate(table, id, data)
     );
   },
   async remove(table, id) {
     return withFallback(
-      async () => {
-        const response = await fetch(buildUrl(`/tables/${table}/${id}`), {
-          method: "DELETE"
-        });
-        await handleRemoteResponse(response, "데이터를 삭제하지 못했습니다.");
-      },
+      async () => firebaseRemove(table, id),
       () => fallbackRemove(table, id)
     );
   }

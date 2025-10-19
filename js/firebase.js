@@ -12,24 +12,7 @@ const firebaseConfig = {
 const FIREBASE_ALLOWED_HOSTS = ["zippy-bonbon-5a7dd7.netlify.app"];
 
 function shouldEnableFirebase() {
-  if (typeof window === "undefined") {
-    return true;
-  }
-  const host = window.location?.hostname || "";
-  if (host === "localhost" || host === "127.0.0.1") {
-    return false;
-  }
-  if (window.CRIME_FORCE_FIREBASE === true || window.CRIME_FORCE_FIREBASE === "true") {
-    return true;
-  }
-  try {
-    if (window.localStorage?.getItem("crime:forceFirebase") === "true") {
-      return true;
-    }
-  } catch (error) {
-    // no-op when storage is unavailable
-  }
-  return FIREBASE_ALLOWED_HOSTS.includes(host);
+  return true; // Always enable Firebase
 }
 
 const FIREBASE_APP_URL = "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -59,7 +42,11 @@ async function loadFirebaseModules() {
           collection: firestoreModule.collection,
           getDocs: firestoreModule.getDocs,
           setDoc: firestoreModule.setDoc,
-          doc: firestoreModule.doc
+          doc: firestoreModule.doc,
+          addDoc: firestoreModule.addDoc,
+          updateDoc: firestoreModule.updateDoc,
+          query: firestoreModule.query,
+          where: firestoreModule.where
         };
       } catch (error) {
         console.warn("Firebase 모듈 로딩 실패", error);
@@ -127,6 +114,107 @@ export async function saveScenarioSet(scenario) {
     return scenario;
   } catch (error) {
     console.error("시나리오 저장 실패", error);
+    throw error;
+  }
+}
+
+// Firebase API functions for sessions, players, chat_messages
+export async function firebaseList(table, params = {}) {
+  const libs = await loadFirebaseModules();
+  if (!libs) {
+    throw new Error("FIREBASE_UNAVAILABLE");
+  }
+  const db = await ensureFirestore();
+  if (!db) {
+    throw new Error("FIREBASE_UNAVAILABLE");
+  }
+  const { limit = 50, search = "" } = params;
+  try {
+    let query = libs.collection(db, table);
+    if (search) {
+      // For sessions, search by code
+      if (table === "sessions") {
+        query = libs.query(query, libs.where("code", "==", search.toUpperCase()));
+      } else if (table === "players") {
+        query = libs.query(query, libs.where("session_code", "==", search.toUpperCase()));
+      } else if (table === "chat_messages") {
+        query = libs.query(query, libs.where("session_code", "==", search.toUpperCase()));
+      }
+    }
+    const snapshot = await libs.getDocs(query);
+    const data = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(item => !item.deleted)
+      .sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
+    return { data: data.slice(0, limit) };
+  } catch (error) {
+    console.error(`Firebase list ${table} failed`, error);
+    throw error;
+  }
+}
+
+export async function firebaseCreate(table, data) {
+  const libs = await loadFirebaseModules();
+  if (!libs) {
+    throw new Error("FIREBASE_UNAVAILABLE");
+  }
+  const db = await ensureFirestore();
+  if (!db) {
+    throw new Error("FIREBASE_UNAVAILABLE");
+  }
+  const now = new Date().toISOString();
+  const record = {
+    ...data,
+    created_at: data.created_at || now,
+    updated_at: data.updated_at || now
+  };
+  try {
+    const docRef = await libs.addDoc(libs.collection(db, table), record);
+    return { id: docRef.id, ...record };
+  } catch (error) {
+    console.error(`Firebase create ${table} failed`, error);
+    throw error;
+  }
+}
+
+export async function firebaseUpdate(table, id, data) {
+  const libs = await loadFirebaseModules();
+  if (!libs) {
+    throw new Error("FIREBASE_UNAVAILABLE");
+  }
+  const db = await ensureFirestore();
+  if (!db) {
+    throw new Error("FIREBASE_UNAVAILABLE");
+  }
+  const now = new Date().toISOString();
+  const updateData = {
+    ...data,
+    updated_at: now
+  };
+  try {
+    const docRef = libs.doc(db, table, id);
+    await libs.setDoc(docRef, updateData, { merge: true });
+    return { id, ...updateData };
+  } catch (error) {
+    console.error(`Firebase update ${table} failed`, error);
+    throw error;
+  }
+}
+
+export async function firebaseRemove(table, id) {
+  const libs = await loadFirebaseModules();
+  if (!libs) {
+    throw new Error("FIREBASE_UNAVAILABLE");
+  }
+  const db = await ensureFirestore();
+  if (!db) {
+    throw new Error("FIREBASE_UNAVAILABLE");
+  }
+  try {
+    const docRef = libs.doc(db, table, id);
+    await libs.setDoc(docRef, { deleted: true, updated_at: new Date().toISOString() }, { merge: true });
+  } catch (error) {
+    console.error(`Firebase remove ${table} failed`, error);
     throw error;
   }
 }
