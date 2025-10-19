@@ -1,4 +1,4 @@
-const REMOTE_ALLOWED_HOSTS = ["zippy-bonbon-5a7dd7.netlify.app"];
+const REMOTE_ALLOWED_HOSTS = ["zippy-bonbon-5a7dd7.netlify.app", "localhost", "127.0.0.1"];
 
 function buildBaseUrl() {
   const defaultBase = "https://zippy-bonbon-5a7dd7.netlify.app";
@@ -17,6 +17,9 @@ function shouldUseRemoteApi() {
     return true;
   }
   const host = window.location?.hostname || "";
+  if (host === "localhost" || host === "127.0.0.1") {
+    return false;
+  }
   if (window.CRIME_FORCE_REMOTE_API === true || window.CRIME_FORCE_REMOTE_API === "true") {
     return true;
   }

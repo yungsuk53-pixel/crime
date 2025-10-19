@@ -16,6 +16,9 @@ function shouldEnableFirebase() {
     return true;
   }
   const host = window.location?.hostname || "";
+  if (host === "localhost" || host === "127.0.0.1") {
+    return false;
+  }
   if (window.CRIME_FORCE_FIREBASE === true || window.CRIME_FORCE_FIREBASE === "true") {
     return true;
   }
