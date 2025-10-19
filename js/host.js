@@ -2172,10 +2172,14 @@ function renderPlayers(players = []) {
       return a.name.localeCompare(b.name, "ko-KR");
     })
     .forEach((player) => {
+      const roleDisplay = player.character 
+        ? `${player.character} (${player.name})`
+        : "미배정";
+      
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>${player.name}</td>
-        <td>${player.character || "미배정"}</td>
+        <td>${roleDisplay}</td>
         <td>${formatPlayerStatus(player)}</td>
         <td>${formatReadyStatus(player)}</td>
         <td>${player.is_host ? "호스트" : player.is_bot ? "봇" : "플레이어"}</td>
