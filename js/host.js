@@ -977,24 +977,24 @@ function updateSessionMeta() {
   const autoMeta = auto_stage_enabled && stage_deadline_at ? formatCountdownText(diff) : "수동 제어";
   if (dom.chatMeta) {
     dom.chatMeta.innerHTML = `
-      <div><strong>세션 코드</strong><br>${code}</div>
-      <div><strong>현재 단계</strong><br>${stageLabels[stage] || stage}</div>
+      <div><strong>세션 코드</strong><br>${code || "-"}</div>
+      <div><strong>현재 단계</strong><br>${stageLabels[stage] || stage || "-"}</div>
       <div><strong>세션 상태</strong><br>${formatStatusText(status)}</div>
       <div><strong>자동 진행</strong><br>${autoMeta}</div>
-      <div><strong>선택 사건</strong><br>${scenario.title}</div>
-      <div><strong>호스트</strong><br>${host_name}</div>
+      <div><strong>선택 사건</strong><br>${scenario?.title || "-"}</div>
+      <div><strong>호스트</strong><br>${host_name || "-"}</div>
       <div><strong>등록 플레이어</strong><br>${player_count ?? state.players.length}</div>
       ${winning_side ? `<div><strong>승리</strong><br>${winning_side === "citizens" ? "시민" : "범인"}</div>` : ""}
     `;
   }
   if (dom.gameMeta) {
     dom.gameMeta.innerHTML = `
-      <div><strong>세션</strong> · ${code}</div>
-      <div><strong>현재 단계</strong> · ${stageLabels[stage] || stage}</div>
+      <div><strong>세션</strong> · ${code || "-"}</div>
+      <div><strong>현재 단계</strong> · ${stageLabels[stage] || stage || "-"}</div>
       <div><strong>상태</strong> · ${formatStatusText(status)}</div>
       <div><strong>자동 진행</strong> · ${autoMeta}</div>
       <div><strong>참가자</strong> · ${player_count ?? state.players.length}명</div>
-      <div><strong>호스트</strong> · ${host_name}</div>
+      <div><strong>호스트</strong> · ${host_name || "-"}</div>
     `;
   }
   if (dom.sessionStatusBadge) {
@@ -1429,7 +1429,7 @@ async function handleStageUpdate() {
 }
 
 async function handleStartGame() {
-  if (!state.activeSession || state.activeSession.status !== "lobby") {
+  if (!state.activeSession || state.activeSession.stage !== "lobby") {
     showToast("이미 게임이 시작되었거나 세션이 없습니다.", "warn");
     return;
   }
@@ -1621,7 +1621,8 @@ async function assignRoles() {
 
 async function handleBeginVoting(auto = false) {
   if (!state.activeSession) return;
-  if (state.activeSession.status !== "in_progress") {
+  const validStages = ["clue_a", "discussion_a", "clue_b", "discussion_b", "clue_c", "final_discussion"];
+  if (!validStages.includes(state.activeSession.stage)) {
     if (!auto) {
       showToast("게임이 진행 중일 때만 투표를 시작할 수 있습니다.", "warn");
     }
@@ -1695,7 +1696,7 @@ function computeVoteOutcome(players) {
 }
 
 async function handleCloseVoting(auto = false) {
-  if (!state.activeSession || state.activeSession.status !== "voting") {
+  if (!state.activeSession || state.activeSession.stage !== "voting") {
     if (!auto) {
       showToast("투표 중일 때만 결과를 발표할 수 있습니다.", "warn");
     }
@@ -1782,7 +1783,7 @@ async function handleAddPlayer(event) {
     showToast("먼저 세션을 생성한 뒤 플레이어를 추가하세요.", "warn");
     return;
   }
-  if (state.activeSession.status !== "lobby") {
+  if (state.activeSession.stage !== "lobby") {
     showToast("게임이 시작된 후에는 새로운 플레이어를 추가할 수 없습니다.", "warn");
     return;
   }
@@ -1840,7 +1841,7 @@ async function handleAddBot() {
     showToast("세션을 먼저 생성하세요.", "warn");
     return;
   }
-  if (state.activeSession.status !== "lobby") {
+  if (state.activeSession.stage !== "lobby") {
     showToast("게임이 시작된 후에는 봇을 추가할 수 없습니다.", "warn");
     return;
   }
@@ -1919,7 +1920,7 @@ async function loadPlayers() {
   if (!state.activeSession) return;
   try {
     const data = await api.list("players", { search: state.activeSession.code, limit: "100" });
-    const players = (data.data || []).filter(
+    const players = (data?.data || []).filter(
       (item) => !item.deleted && item.session_code === state.activeSession.code
     );
     state.players = players;
@@ -2522,7 +2523,7 @@ function updatePlayerStats() {
 
 function updateVoteStatus() {
   if (!dom.voteStatus) return;
-  if (!state.activeSession || state.activeSession.status !== "voting") {
+  if (!state.activeSession || state.activeSession.stage !== "voting") {
     dom.voteStatus.innerHTML = "";
     return;
   }

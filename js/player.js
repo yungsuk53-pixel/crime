@@ -27,6 +27,7 @@ const state = {
   chatIdentity: null,
   lastRoleNotified: null,
   roster: [],
+  lastRosterHash: null,
   voteInFlight: false,
   autoJoinAttempted: false,
   readyInFlight: false,
@@ -888,13 +889,13 @@ function renderLobbyStatus(session, player) {
     dom.lobbyStatus.innerHTML = "<p class=\"placeholder\">세션에 접속하면 현재 진행 상황이 표시됩니다.</p>";
     return;
   }
-  const stageLabel = stageLabels[session.stage] || session.stage;
+  const stageLabel = stageLabels[session.stage] || session.stage || "-";
   const statusText = formatStatusText(session.status);
   const roleText = player?.role || "미배정";
   const deadline = session.stage_deadline_at;
 
   dom.lobbyStatus.innerHTML = `
-    <div class="lobby-status__row"><span class="lobby-status__label">세션</span><span class="lobby-status__value">${session.code}</span></div>
+    <div class="lobby-status__row"><span class="lobby-status__label">세션</span><span class="lobby-status__value">${session.code || "-"}</span></div>
     <div class="lobby-status__row"><span class="lobby-status__label">현재 단계</span><span class="lobby-status__value">${stageLabel}</span></div>
     <div class="lobby-status__row"><span class="lobby-status__label">세션 상태</span><span class="lobby-status__value">${statusText}</span></div>
     <div class="lobby-status__row" id="playerCountdownRow" style="${deadline ? "" : "display:none"}">
@@ -914,8 +915,8 @@ function renderLobbyStatus(session, player) {
 
 function renderSessionMeta(session, scenario) {
   if (!dom.sessionMeta || !session) return;
-  const rangeText = formatPlayerRange(scenario?.playerRange);
-  const stageLabel = stageLabels[session.stage] || session.stage;
+  const rangeText = scenario?.playerRange ? formatPlayerRange(scenario.playerRange) : "-";
+  const stageLabel = stageLabels[session.stage] || session.stage || "-";
   const statusText = formatStatusText(session.status);
   let autoMeta = "수동 진행";
   if (session.auto_stage_enabled && session.stage_deadline_at) {
@@ -925,7 +926,7 @@ function renderSessionMeta(session, scenario) {
     autoMeta = "호스트 대기";
   }
   dom.sessionMeta.innerHTML = `
-    <div><strong>세션 코드</strong> · ${session.code}</div>
+    <div><strong>세션 코드</strong> · ${session.code || "-"}</div>
     <div><strong>현재 단계</strong> · ${stageLabel}</div>
     <div><strong>세션 상태</strong> · ${statusText}</div>
     <div><strong>자동 진행</strong> · ${autoMeta}</div>
@@ -1366,13 +1367,24 @@ async function loadRoster() {
   if (!state.sessionCode) return;
   try {
     const data = await api.list("players", { search: state.sessionCode, limit: "100" });
-    state.roster = (data?.data || []).filter((item) => !item.deleted && item.session_code === state.sessionCode);
-    renderRoster(state.roster);
-    updateReadyUI();
-    updateVoteUI();
+    const newRoster = (data?.data || []).filter((item) => !item.deleted && item.session_code === state.sessionCode);
+    
+    // 로스터 해시 생성 (변경 감지용)
+    const newHash = JSON.stringify(newRoster.map(p => ({ id: p.id, name: p.name, role: p.role, has_voted: p.has_voted, stage_ready: p.stage_ready })));
+    
+    // 변경된 경우에만 렌더링
+    if (newHash !== state.lastRosterHash) {
+      state.roster = newRoster;
+      state.lastRosterHash = newHash;
+      renderRoster(state.roster);
+      updateReadyUI();
+      updateVoteUI();
+    }
   } catch (error) {
     console.error("로스터 로드 실패", error);
-    renderRoster([]);
+    if (!state.roster.length) {
+      renderRoster([]);
+    }
   }
 }
 
