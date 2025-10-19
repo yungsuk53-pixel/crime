@@ -790,6 +790,93 @@ function renderRoleView(player) {
     return;
   }
 
+  // 개인 타임라인 표시
+  if (cluePackage.timeline && cluePackage.timeline.length > 0) {
+    const timelineSection = document.createElement("div");
+    timelineSection.className = "role-view__section";
+    const timelineTitle = document.createElement("h4");
+    timelineTitle.textContent = "🕐 나의 타임라인";
+    timelineSection.appendChild(timelineTitle);
+    
+    const timelineList = document.createElement("ul");
+    timelineList.className = "clue-list clue-list--timeline";
+    cluePackage.timeline.forEach(entry => {
+      const item = document.createElement("li");
+      item.innerHTML = `<strong>${entry.time}</strong> - ${entry.action}`;
+      timelineList.appendChild(item);
+    });
+    timelineSection.appendChild(timelineList);
+    container.appendChild(timelineSection);
+  }
+
+  // 추천 질문 표시
+  if (cluePackage.suggestedQuestions && cluePackage.suggestedQuestions.length > 0) {
+    const questionsSection = document.createElement("div");
+    questionsSection.className = "role-view__section";
+    const questionsTitle = document.createElement("h4");
+    questionsTitle.textContent = "💬 추천 질문";
+    questionsSection.appendChild(questionsTitle);
+    
+    const questionsList = document.createElement("ul");
+    questionsList.className = "clue-list clue-list--questions";
+    cluePackage.suggestedQuestions.forEach(question => {
+      const item = document.createElement("li");
+      item.textContent = question;
+      questionsList.appendChild(item);
+    });
+    questionsSection.appendChild(questionsList);
+    container.appendChild(questionsSection);
+  }
+
+  // 핵심 갈등 표시
+  if (cluePackage.keyConflicts && cluePackage.keyConflicts.length > 0) {
+    const conflictsSection = document.createElement("div");
+    conflictsSection.className = "role-view__section";
+    const conflictsTitle = document.createElement("h4");
+    conflictsTitle.textContent = "⚡ 핵심 갈등";
+    conflictsSection.appendChild(conflictsTitle);
+    
+    const conflictsList = document.createElement("ul");
+    conflictsList.className = "clue-list clue-list--conflicts";
+    cluePackage.keyConflicts.forEach(conflict => {
+      const item = document.createElement("li");
+      item.textContent = conflict;
+      conflictsList.appendChild(item);
+    });
+    conflictsSection.appendChild(conflictsList);
+    container.appendChild(conflictsSection);
+  }
+
+  // 개인 시각적 증거 표시
+  if (cluePackage.visualEvidence && cluePackage.visualEvidence.length > 0) {
+    const evidenceSection = document.createElement("div");
+    evidenceSection.className = "role-view__section";
+    const evidenceTitle = document.createElement("h4");
+    evidenceTitle.textContent = "📋 나만 아는 증거";
+    evidenceSection.appendChild(evidenceTitle);
+    
+    cluePackage.visualEvidence.forEach(evidence => {
+      const evidenceCard = document.createElement("div");
+      evidenceCard.className = "visual-evidence-card";
+      
+      const evidenceHeader = document.createElement("div");
+      evidenceHeader.className = "visual-evidence-card__header";
+      evidenceHeader.innerHTML = `<strong>${evidence.title}</strong> <span class="badge">${evidence.type}</span>`;
+      
+      const evidenceDesc = document.createElement("p");
+      evidenceDesc.className = "visual-evidence-card__description";
+      evidenceDesc.textContent = evidence.description;
+      
+      const evidenceContent = document.createElement("div");
+      evidenceContent.className = "visual-evidence-card__content";
+      evidenceContent.innerHTML = evidence.html || "";
+      
+      evidenceCard.append(evidenceHeader, evidenceDesc, evidenceContent);
+      evidenceSection.appendChild(evidenceCard);
+    });
+    container.appendChild(evidenceSection);
+  }
+
   const unlockedRounds = getUnlockedRounds(cluePackage);
   const totalRounds = cluePackage.rounds || [];
   const currentStageIndex = stageOrder.indexOf(stage);
@@ -1686,7 +1773,8 @@ function renderChatMessages(messages = []) {
       hour: "2-digit",
       minute: "2-digit"
     });
-    meta.innerHTML = `<span>${msg.player_name} (${msg.role || "참가자"})</span><span>${timeText}</span>`;
+    // 배역 이름만 표시 (역할 표시 제거)
+    meta.innerHTML = `<span>${msg.role || msg.player_name}</span><span>${timeText}</span>`;
 
     const text = document.createElement("p");
     text.className = "chat-message__text";

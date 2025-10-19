@@ -786,6 +786,25 @@ export const SCENARIO_GENERATION_GUIDE = `
         ],
         "prompts": [
           "이 단계에서 취해야 할 구체적 행동"
+        ],
+        "timeline": [
+          {"time": "18:00", "action": "이 캐릭터가 해당 시간에 한 행동"},
+          {"time": "19:30", "action": "사건과 관련된 행동"}
+        ],
+        "suggestedQuestions": [
+          "이 캐릭터가 다른 사람에게 물어봐야 할 질문"
+        ],
+        "keyConflicts": [
+          "이 캐릭터가 경험하는 핵심 갈등이나 딜레마"
+        ],
+        "visualEvidence": [
+          {
+            "type": "message|document|receipt",
+            "title": "이 캐릭터만 볼 수 있는 증거 제목",
+            "description": "증거 설명",
+            "html": "<div>HTML 코드</div>",
+            "imagePrompt": "이미지 생성 프롬프트"
+          }
         ]
       }
     ],
@@ -806,6 +825,24 @@ export const SCENARIO_GENERATION_GUIDE = `
         ],
         "exposed": [
           "들킬 위험이 있는 약점이나 증거"
+        ],
+        "timeline": [
+          {"time": "18:00", "action": "범인의 실제 행동 (알리바이 포함)"}
+        ],
+        "suggestedQuestions": [
+          "의심을 피하기 위해 던져야 할 질문"
+        ],
+        "keyConflicts": [
+          "범인이 직면한 심리적 압박이나 갈등"
+        ],
+        "visualEvidence": [
+          {
+            "type": "message",
+            "title": "범인만 아는 증거",
+            "description": "증거 설명",
+            "html": "<div>HTML 코드</div>",
+            "imagePrompt": "이미지 프롬프트"
+          }
         ]
       }
     ],
@@ -823,6 +860,24 @@ export const SCENARIO_GENERATION_GUIDE = `
         ],
         "prompts": [
           "토론을 유도할 질문"
+        ],
+        "timeline": [
+          {"time": "18:00", "action": "용의자의 행동"}
+        ],
+        "suggestedQuestions": [
+          "진실을 밝히기 위해 물어봐야 할 질문"
+        ],
+        "keyConflicts": [
+          "용의자가 직면한 딜레마나 비밀"
+        ],
+        "visualEvidence": [
+          {
+            "type": "document",
+            "title": "개인 증거",
+            "description": "설명",
+            "html": "<div>HTML</div>",
+            "imagePrompt": "프롬프트"
+          }
         ]
       }
     ]
@@ -1056,7 +1111,22 @@ export const SCENARIO_GENERATION_GUIDE = `
         "briefing": "역할 설명",
         "truths": ["진실1", "진실2", "진실3"],
         "misdirections": ["혼동1", "혼동2"],
-        "prompts": ["행동지침1", "행동지침2"]
+        "prompts": ["행동지침1", "행동지침2"],
+        "timeline": [
+          {"time": "18:00", "action": "이 캐릭터의 행동"},
+          {"time": "19:00", "action": "사건 관련 행동"}
+        ],
+        "suggestedQuestions": ["질문1", "질문2"],
+        "keyConflicts": ["갈등1"],
+        "visualEvidence": [
+          {
+            "type": "document",
+            "title": "개인 증거",
+            "description": "설명",
+            "html": "<div>HTML</div>",
+            "imagePrompt": "프롬프트"
+          }
+        ]
       }
     ],
     "culprit": [
@@ -1067,7 +1137,19 @@ export const SCENARIO_GENERATION_GUIDE = `
         "truths": ["진실1", "진실2"],
         "misdirections": ["혼동1", "혼동2"],
         "prompts": ["행동지침1", "행동지침2"],
-        "exposed": ["약점1", "약점2"]
+        "exposed": ["약점1", "약점2"],
+        "timeline": [{"time": "18:00", "action": "범인의 실제 행동"}],
+        "suggestedQuestions": ["질문1"],
+        "keyConflicts": ["심리적 압박"],
+        "visualEvidence": [
+          {
+            "type": "message",
+            "title": "범인만 아는 증거",
+            "description": "설명",
+            "html": "<div>HTML</div>",
+            "imagePrompt": "프롬프트"
+          }
+        ]
       }
     ],
     "suspects": [
@@ -1077,7 +1159,19 @@ export const SCENARIO_GENERATION_GUIDE = `
         "briefing": "역할 설명",
         "truths": ["진실1", "진실2"],
         "misdirections": ["혼동1"],
-        "prompts": ["행동지침1"]
+        "prompts": ["행동지침1"],
+        "timeline": [{"time": "18:00", "action": "용의자 행동"}],
+        "suggestedQuestions": ["질문1"],
+        "keyConflicts": ["비밀"],
+        "visualEvidence": [
+          {
+            "type": "receipt",
+            "title": "개인 증거",
+            "description": "설명",
+            "html": "<div>HTML</div>",
+            "imagePrompt": "프롬프트"
+          }
+        ]
       },
       {
         "name": "용의자2 이름",
@@ -1085,19 +1179,14 @@ export const SCENARIO_GENERATION_GUIDE = `
         "briefing": "역할 설명",
         "truths": ["진실1", "진실2"],
         "misdirections": ["혼동1"],
-        "prompts": ["행동지침1"]
+        "prompts": ["행동지침1"],
+        "timeline": [{"time": "18:00", "action": "용의자 행동"}],
+        "suggestedQuestions": ["질문1"],
+        "keyConflicts": ["딜레마"],
+        "visualEvidence": []
       }
     ]
-  },
-  "visualEvidence": [
-    {
-      "type": "message",
-      "title": "증거 제목",
-      "description": "증거 설명",
-      "html": "<div>HTML 코드</div>",
-      "imagePrompt": "이미지 생성 프롬프트"
-    }
-  ]
+  }
 }
 \`\`\`
 

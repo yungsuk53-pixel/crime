@@ -139,6 +139,21 @@ function normaliseScenario(raw = {}) {
       copy.exposed = ensureArray(copy.exposed);
     }
     
+    // 새로운 개인별 필드 정규화
+    copy.timeline = ensureArray(copy.timeline).map((item) => ({
+      time: item?.time ?? "",
+      action: item?.action ?? ""
+    }));
+    copy.suggestedQuestions = ensureArray(copy.suggestedQuestions);
+    copy.keyConflicts = ensureArray(copy.keyConflicts);
+    copy.visualEvidence = ensureArray(copy.visualEvidence).map((item) => ({
+      type: item?.type || "document",
+      title: item?.title || "",
+      description: item?.description || "",
+      html: item?.html || "",
+      imagePrompt: item?.imagePrompt || ""
+    }));
+    
     return copy;
   };
   
@@ -431,7 +446,30 @@ function buildPromptTemplate() {
 
 function buildPromptGuide() {
   // data.js에서 가져온 고품질 프롬프트 가이드 사용
-  return SCENARIO_GENERATION_GUIDE;
+  let guide = SCENARIO_GENERATION_GUIDE;
+  
+  // 사용자 입력 필드 읽기
+  const userTheme = document.getElementById("userTheme")?.value.trim();
+  const userPlayerCount = document.getElementById("userPlayerCount")?.value.trim();
+  const userRequirements = document.getElementById("userRequirements")?.value.trim();
+  
+  // 사용자 입력이 있으면 프롬프트 앞에 추가
+  if (userTheme || userPlayerCount || userRequirements) {
+    let userInput = "\n\n## 🎯 사용자 요청 사항\n\n";
+    if (userTheme) {
+      userInput += `**주제/배경:** ${userTheme}\n\n`;
+    }
+    if (userPlayerCount) {
+      userInput += `**추천 인원:** ${userPlayerCount}\n\n`;
+    }
+    if (userRequirements) {
+      userInput += `**특별 요구사항:**\n${userRequirements}\n\n`;
+    }
+    userInput += "위 조건을 고려하여 시나리오를 생성해 주세요.\n\n---\n";
+    guide = userInput + guide;
+  }
+  
+  return guide;
 }
 
 function downloadPromptTemplate() {

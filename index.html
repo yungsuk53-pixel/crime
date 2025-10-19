@@ -49,6 +49,25 @@
                     <article class="card card--stacked">
                         <h3 class="card__title">프롬프트 템플릿</h3>
                         <p class="helper-text">아래 안내를 AI에게 전달하면 모든 필수 항목이 포함된 JSON을 받을 수 있습니다. 주제만 선정해 요청해 보세요.</p>
+                        
+                        <!-- 사용자 입력 공간 -->
+                        <div class="card card--nested" style="background: #f8f9fa; padding: 15px; margin-bottom: 15px; border-radius: 8px;">
+                            <h4 style="margin: 0 0 10px 0; font-size: 14px; font-weight: 600;">선택 사항: 원하는 시나리오 조건 입력</h4>
+                            <p class="helper-text" style="margin-bottom: 10px; font-size: 12px;">아래 항목은 선택 사항입니다. 입력하면 AI가 참고하여 시나리오를 생성합니다.</p>
+                            <label class="field">
+                                <span class="field__label">주제 / 배경</span>
+                                <input type="text" id="userTheme" class="field__input" placeholder="예: IT 스타트업, 크루즈 선박, 중세 성">
+                            </label>
+                            <label class="field">
+                                <span class="field__label">추천 인원</span>
+                                <input type="text" id="userPlayerCount" class="field__input" placeholder="예: 5-7명">
+                            </label>
+                            <label class="field">
+                                <span class="field__label">특별 요구사항</span>
+                                <textarea id="userRequirements" class="field__textarea" rows="3" placeholder="예: 과학적인 트릭 포함, 심리적 긴장감 강조, 밀실 살인"></textarea>
+                            </label>
+                        </div>
+                        
                         <div class="builder-actions">
                             <button type="button" class="btn btn--secondary" id="downloadPromptTemplate">템플릿 다운로드</button>
                             <button type="button" class="btn btn--ghost" id="copyPromptGuide">안내문 복사</button>

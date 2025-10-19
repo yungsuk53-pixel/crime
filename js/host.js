@@ -1545,7 +1545,12 @@ function buildCluePackage(persona, type) {
       name: persona.name,
       title: persona.title || ""
     },
-    briefing: persona.briefing || persona.summary || ""
+    briefing: persona.briefing || persona.summary || "",
+    // 개인별 정보 추가
+    timeline: persona.timeline || [],
+    suggestedQuestions: persona.suggestedQuestions || [],
+    keyConflicts: persona.keyConflicts || [],
+    visualEvidence: persona.visualEvidence || []
   };
 
   if (type === "culprit") {
@@ -2778,7 +2783,8 @@ function renderChatMessages(messages = []) {
       hour: "2-digit",
       minute: "2-digit"
     });
-    meta.innerHTML = `<span>${msg.player_name} (${msg.role || "참가자"})</span><span>${timeText}</span>`;
+    // 배역 이름만 표시 (역할 표시 제거)
+    meta.innerHTML = `<span>${msg.role || msg.player_name}</span><span>${timeText}</span>`;
 
     const text = document.createElement("p");
     text.className = "chat-message__text";
