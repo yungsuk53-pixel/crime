@@ -16,11 +16,11 @@ function shouldEnableFirebase() {
 }
 
 const FIREBASE_APP_URL = "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-const FIRESTORE_URL = "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+const DATABASE_URL = "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 let firebaseModulePromise = null;
 let firebaseAppInstance = null;
-let firestoreInstance = null;
+let databaseInstance = null;
 let firebaseEnabled = shouldEnableFirebase();
 
 async function loadFirebaseModules() {
@@ -30,23 +30,27 @@ async function loadFirebaseModules() {
   if (!firebaseModulePromise) {
     firebaseModulePromise = (async () => {
       try {
-        const [appModule, firestoreModule] = await Promise.all([
+        const [appModule, databaseModule] = await Promise.all([
           import(FIREBASE_APP_URL),
-          import(FIRESTORE_URL)
+          import(DATABASE_URL)
         ]);
         return {
           initializeApp: appModule.initializeApp,
           getApps: appModule.getApps,
           getApp: appModule.getApp,
-          getFirestore: firestoreModule.getFirestore,
-          collection: firestoreModule.collection,
-          getDocs: firestoreModule.getDocs,
-          setDoc: firestoreModule.setDoc,
-          doc: firestoreModule.doc,
-          addDoc: firestoreModule.addDoc,
-          updateDoc: firestoreModule.updateDoc,
-          query: firestoreModule.query,
-          where: firestoreModule.where
+          getDatabase: databaseModule.getDatabase,
+          ref: databaseModule.ref,
+          set: databaseModule.set,
+          get: databaseModule.get,
+          push: databaseModule.push,
+          update: databaseModule.update,
+          remove: databaseModule.remove,
+          onValue: databaseModule.onValue,
+          off: databaseModule.off,
+          query: databaseModule.query,
+          orderByChild: databaseModule.orderByChild,
+          equalTo: databaseModule.equalTo,
+          limitToLast: databaseModule.limitToLast
         };
       } catch (error) {
         console.warn("Firebase 모듈 로딩 실패", error);
@@ -58,18 +62,18 @@ async function loadFirebaseModules() {
   return firebaseModulePromise;
 }
 
-async function ensureFirestore() {
+async function ensureDatabase() {
   const libs = await loadFirebaseModules();
   if (!libs) return null;
-  if (firestoreInstance) {
-    return firestoreInstance;
+  if (databaseInstance) {
+    return databaseInstance;
   }
   if (!firebaseAppInstance) {
     const { getApps, getApp, initializeApp } = libs;
     firebaseAppInstance = getApps().length ? getApp() : initializeApp(firebaseConfig);
   }
-  firestoreInstance = libs.getFirestore(firebaseAppInstance);
-  return firestoreInstance;
+  databaseInstance = libs.getDatabase(firebaseAppInstance);
+  return databaseInstance;
 }
 
 export async function fetchRemoteScenarios() {
@@ -81,14 +85,17 @@ export async function fetchRemoteScenarios() {
     if (!libs) {
       return [];
     }
-    const db = await ensureFirestore();
+    const db = await ensureDatabase();
     if (!db) {
       return [];
     }
-    const snapshot = await libs.getDocs(libs.collection(db, "scenarioSets"));
-    return snapshot.docs
-      .map((document) => ({ id: document.id, ...document.data() }))
-      .filter((scenario) => scenario?.id && scenario?.title);
+    const tableRef = libs.ref(db, "scenarioSets");
+    const snapshot = await libs.get(tableRef);
+    if (!snapshot.exists()) {
+      return [];
+    }
+    const data = Object.entries(snapshot.val()).map(([id, value]) => ({ id, ...value }));
+    return data.filter((scenario) => scenario?.id && scenario?.title);
   } catch (error) {
     console.warn("원격 사건 세트를 불러오지 못했습니다.", error);
     firebaseEnabled = false;
@@ -104,13 +111,13 @@ export async function saveScenarioSet(scenario) {
   if (!libs) {
     throw new Error("FIREBASE_UNAVAILABLE");
   }
-  const db = await ensureFirestore();
+  const db = await ensureDatabase();
   if (!db) {
     throw new Error("FIREBASE_UNAVAILABLE");
   }
   try {
-    const scenarioDoc = libs.doc(db, "scenarioSets", scenario.id);
-    await libs.setDoc(scenarioDoc, scenario, { merge: true });
+    const scenarioRef = libs.ref(db, `scenarioSets/${scenario.id}`);
+    await libs.set(scenarioRef, scenario);
     return scenario;
   } catch (error) {
     console.error("시나리오 저장 실패", error);
@@ -119,33 +126,38 @@ export async function saveScenarioSet(scenario) {
 }
 
 // Firebase API functions for sessions, players, chat_messages
+// Firebase API functions for sessions, players, chat_messages
 export async function firebaseList(table, params = {}) {
   const libs = await loadFirebaseModules();
   if (!libs) {
     throw new Error("FIREBASE_UNAVAILABLE");
   }
-  const db = await ensureFirestore();
+  const db = await ensureDatabase();
   if (!db) {
     throw new Error("FIREBASE_UNAVAILABLE");
   }
   const { limit = 50, search = "" } = params;
   try {
-    let query = libs.collection(db, table);
+    const tableRef = libs.ref(db, table);
+    const snapshot = await libs.get(tableRef);
+    if (!snapshot.exists()) {
+      return { data: [] };
+    }
+    let data = Object.entries(snapshot.val()).map(([id, value]) => ({ id, ...value }));
+    // Filter deleted items
+    data = data.filter(item => !item.deleted);
+    // Apply search filter
     if (search) {
-      // For sessions, search by code
       if (table === "sessions") {
-        query = libs.query(query, libs.where("code", "==", search.toUpperCase()));
+        data = data.filter(item => item.code && item.code.toUpperCase() === search.toUpperCase());
       } else if (table === "players") {
-        query = libs.query(query, libs.where("session_code", "==", search.toUpperCase()));
+        data = data.filter(item => item.session_code && item.session_code.toUpperCase() === search.toUpperCase());
       } else if (table === "chat_messages") {
-        query = libs.query(query, libs.where("session_code", "==", search.toUpperCase()));
+        data = data.filter(item => item.session_code && item.session_code.toUpperCase() === search.toUpperCase());
       }
     }
-    const snapshot = await libs.getDocs(query);
-    const data = snapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
-      .filter(item => !item.deleted)
-      .sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
+    // Sort by updated_at or created_at
+    data.sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
     return { data: data.slice(0, limit) };
   } catch (error) {
     console.error(`Firebase list ${table} failed`, error);
@@ -158,7 +170,7 @@ export async function firebaseCreate(table, data) {
   if (!libs) {
     throw new Error("FIREBASE_UNAVAILABLE");
   }
-  const db = await ensureFirestore();
+  const db = await ensureDatabase();
   if (!db) {
     throw new Error("FIREBASE_UNAVAILABLE");
   }
@@ -169,8 +181,10 @@ export async function firebaseCreate(table, data) {
     updated_at: data.updated_at || now
   };
   try {
-    const docRef = await libs.addDoc(libs.collection(db, table), record);
-    return { id: docRef.id, ...record };
+    const tableRef = libs.ref(db, table);
+    const newRef = libs.push(tableRef);
+    await libs.set(newRef, record);
+    return { id: newRef.key, ...record };
   } catch (error) {
     console.error(`Firebase create ${table} failed`, error);
     throw error;
@@ -182,7 +196,7 @@ export async function firebaseUpdate(table, id, data) {
   if (!libs) {
     throw new Error("FIREBASE_UNAVAILABLE");
   }
-  const db = await ensureFirestore();
+  const db = await ensureDatabase();
   if (!db) {
     throw new Error("FIREBASE_UNAVAILABLE");
   }
@@ -192,8 +206,8 @@ export async function firebaseUpdate(table, id, data) {
     updated_at: now
   };
   try {
-    const docRef = libs.doc(db, table, id);
-    await libs.setDoc(docRef, updateData, { merge: true });
+    const itemRef = libs.ref(db, `${table}/${id}`);
+    await libs.update(itemRef, updateData);
     return { id, ...updateData };
   } catch (error) {
     console.error(`Firebase update ${table} failed`, error);
@@ -206,13 +220,13 @@ export async function firebaseRemove(table, id) {
   if (!libs) {
     throw new Error("FIREBASE_UNAVAILABLE");
   }
-  const db = await ensureFirestore();
+  const db = await ensureDatabase();
   if (!db) {
     throw new Error("FIREBASE_UNAVAILABLE");
   }
   try {
-    const docRef = libs.doc(db, table, id);
-    await libs.setDoc(docRef, { deleted: true, updated_at: new Date().toISOString() }, { merge: true });
+    const itemRef = libs.ref(db, `${table}/${id}`);
+    await libs.update(itemRef, { deleted: true, updated_at: new Date().toISOString() });
   } catch (error) {
     console.error(`Firebase remove ${table} failed`, error);
     throw error;
