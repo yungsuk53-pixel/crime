@@ -2800,7 +2800,7 @@ function populateHostVoteOptions() {
     .forEach((player) => {
       const option = document.createElement("option");
       option.value = player.id;
-      option.textContent = player.role ? `${player.name} (${player.role})` : player.name;
+      option.textContent = player.name;
       dom.hostVoteTarget.appendChild(option);
     });
   if (existingValue) {
@@ -2853,6 +2853,7 @@ function renderHostVoteOutcome(session) {
     return;
   }
   let tallyHtml = "";
+  let winningSide = session.winning_side;
   if (session.vote_summary) {
     try {
       const summary = JSON.parse(session.vote_summary);
@@ -2861,6 +2862,19 @@ function renderHostVoteOutcome(session) {
           .map(([name, count]) => `<span><span>${name}</span><span>${count}표</span></span>`)
           .join("");
         tallyHtml = `<div class="vote-result__tally">${tallyHtml}</div>`;
+        // 승패 결정: 기권한 사람(투표하지 않은 사람)의 표를 제외하고 다수결로 결정
+        if (!winningSide) {
+          const entries = Object.entries(summary.tallies);
+          if (entries.length > 0) {
+            const [votedName] = entries.reduce((max, curr) => curr[1] > max[1] ? curr : max);
+            const culprit = state.players.find(p => p.role === "범인");
+            if (culprit && votedName === culprit.name) {
+              winningSide = "citizens";
+            } else {
+              winningSide = "culprit";
+            }
+          }
+        }
       } else if (typeof session.vote_summary === "string") {
         tallyHtml = `<p>${session.vote_summary}</p>`;
       }
@@ -2870,9 +2884,9 @@ function renderHostVoteOutcome(session) {
   }
 
   const headline =
-    session.winning_side === "citizens"
+    winningSide === "citizens"
       ? "시민 팀 승리!"
-      : session.winning_side === "culprit"
+      : winningSide === "culprit"
         ? "범인 승리!"
         : "결과 발표";
 
