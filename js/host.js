@@ -940,12 +940,8 @@ function renderScenario(scenario) {
   if (dom.gameScenarioTitle) dom.gameScenarioTitle.textContent = scenario.title;
   if (dom.gameScenarioTagline) dom.gameScenarioTagline.textContent = scenario.tagline;
   if (dom.gameScenarioSummary) dom.gameScenarioSummary.textContent = scenario.summary;
-  renderList(dom.gameScenarioConflicts, scenario.conflicts);
-  renderList(dom.gameScenarioPrompts, scenario.prompts);
+  // conflicts, prompts, evidence는 표시하지 않음 (각 플레이어의 개인 단서로만 제공)
   renderTimeline(dom.gameScenarioTimeline, scenario.timeline);
-  renderList(dom.gameEvidencePhysical, scenario.evidence.physical);
-  renderList(dom.gameEvidenceDigital, scenario.evidence.digital);
-  renderVisualEvidence(dom.gameEvidencePhysical, scenario.evidence.visual);
 
   if (scenarioChanged) {
     resetAssignmentsOnScenarioChange();
