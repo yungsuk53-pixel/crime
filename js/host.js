@@ -740,7 +740,10 @@ async function ensureStageSchedule() {
       stage_deadline_at: deadlineIso,
       last_activity: now.toISOString()
     });
-    state.activeSession = updated;
+    state.activeSession = {
+      ...state.activeSession,
+      ...updated
+    };
     updateSessionMeta();
     updateStageTimerDisplay();
     startStageTimerLoop();
@@ -801,7 +804,10 @@ async function transitionToStage(stageKey, options = {}) {
   }
 
   const updated = await api.update("sessions", state.sessionRecordId, payload);
-  state.activeSession = updated;
+  state.activeSession = {
+    ...state.activeSession,
+    ...updated
+  };
   updateStageTracker(stageKey);
   updateSessionMeta();
   updateResultBanner();
@@ -1590,7 +1596,10 @@ async function assignRoles() {
       roles_assigned: true,
       last_activity: now
     });
-    state.activeSession = updatedSession;
+    state.activeSession = {
+      ...state.activeSession,
+      ...updatedSession
+    };
     loadPlayers();
 
     // 봇 채팅 메시지 추가
@@ -1892,7 +1901,10 @@ async function markRolesUnassigned() {
       roles_assigned: false,
       last_activity: new Date().toISOString()
     });
-    state.activeSession = updated;
+    state.activeSession = {
+      ...state.activeSession,
+      ...updated
+    };
   } catch (error) {
     console.warn("roles_assigned 갱신 실패", error);
   }
@@ -1957,7 +1969,11 @@ async function loadPlayers() {
           player_count: players.length,
           last_activity: new Date().toISOString()
         });
-        state.activeSession = updated;
+        // 기존 세션 데이터와 업데이트된 데이터 병합
+        state.activeSession = {
+          ...state.activeSession,
+          ...updated
+        };
         updateSessionMeta();
         updateResultBanner();
         updateControlStates();
@@ -2557,7 +2573,10 @@ async function handleResetPlayers() {
       player_count: 0,
       last_activity: new Date().toISOString()
     });
-    state.activeSession = updatedSession;
+    state.activeSession = {
+      ...state.activeSession,
+      ...updatedSession
+    };
     showToast("플레이어 목록이 초기화되었습니다.", "success");
     state.players = [];
     renderPlayers([]);

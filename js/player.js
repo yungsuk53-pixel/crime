@@ -573,7 +573,10 @@ async function handleReadyToggle() {
       ready_stage: stage,
       last_seen: new Date().toISOString()
     });
-    state.player = updated;
+    state.player = {
+      ...state.player,
+      ...updated
+    };
     updateReadyUI();
     await loadRoster();
     showToast(

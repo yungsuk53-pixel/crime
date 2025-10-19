@@ -241,10 +241,30 @@ export async function firebaseUpdate(table, id, data) {
   };
   try {
     const itemRef = libs.ref(db, `${table}/${id}`);
+    
+    // 먼저 기존 데이터를 읽어옵니다
+    const snapshot = await libs.get(itemRef);
+    if (!snapshot.exists()) {
+      throw new Error(`${table}/${id} not found`);
+    }
+    
+    // 기존 데이터와 업데이트 데이터를 병합
+    const existingData = snapshot.val();
+    const mergedData = {
+      ...existingData,
+      ...updateData,
+      id
+    };
+    
+    // 업데이트 실행
     await libs.update(itemRef, updateData);
-    return { id, ...updateData };
+    
+    console.log(`[Firebase] ${table}/${id} 업데이트 성공`);
+    
+    // 병합된 전체 데이터 반환
+    return mergedData;
   } catch (error) {
-    console.error(`Firebase update ${table} failed`, error);
+    console.error(`[Firebase] ${table} 업데이트 실패:`, error);
     throw error;
   }
 }
