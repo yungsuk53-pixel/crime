@@ -549,7 +549,7 @@ function renderList(element, items = []) {
   }
   items.forEach((item) => {
     const li = document.createElement("li");
-    li.textContent = item;
+    li.textContent = typeof item === 'string' ? item : item.display || item;
     element.appendChild(li);
   });
 }

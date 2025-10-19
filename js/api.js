@@ -103,10 +103,7 @@ function recordMatchesSearch(table, record, term) {
   const needle = term.toLowerCase();
   switch (table) {
     case "sessions":
-      return (
-        record.code?.toLowerCase().includes(needle) ||
-        record.host_name?.toLowerCase().includes(needle)
-      );
+      return record.code?.toLowerCase() === needle;
     case "players":
       return (
         record.session_code?.toLowerCase().includes(needle) ||
