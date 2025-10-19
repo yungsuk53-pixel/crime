@@ -887,10 +887,20 @@ async function transitionToStage(stageKey, options = {}) {
 }
 
 function populateScenarioSelect() {
+  console.log('populateScenarioSelect 호출됨');
+  console.log('dom.scenarioSelect:', dom.scenarioSelect);
+  console.log('scenarios:', scenarios);
+  
+  if (!dom.scenarioSelect) {
+    console.error('scenarioSelect 요소를 찾을 수 없습니다!');
+    return;
+  }
+  
   dom.scenarioSelect.innerHTML = "";
   
   // 시나리오가 없으면 기본 메시지 표시
   if (!scenarios || scenarios.length === 0) {
+    console.warn('시나리오가 없습니다!');
     const option = document.createElement("option");
     option.value = "";
     option.textContent = "사건 세트를 불러오는 중...";
@@ -898,12 +908,16 @@ function populateScenarioSelect() {
     return;
   }
   
+  console.log('시나리오 개수:', scenarios.length);
+  
   scenarios.forEach((scenario) => {
     const option = document.createElement("option");
     option.value = scenario.id;
     option.textContent = scenario.title;
     dom.scenarioSelect.appendChild(option);
   });
+  
+  console.log('옵션 추가 완료. 총 옵션 수:', dom.scenarioSelect.options.length);
   
   // activeScenario가 없으면 첫 번째 시나리오 설정
   if (!state.activeScenario && scenarios.length > 0) {
