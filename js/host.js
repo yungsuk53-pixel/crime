@@ -2679,9 +2679,9 @@ function renderHostCharacterList() {
   const scenario = state.activeScenario;
   
   if (scenario.roles) {
-    if (scenario.roles.detective) allPersonas.push(...scenario.roles.detective.map(p => ({...p, roleType: "탐정"})));
-    if (scenario.roles.culprit) allPersonas.push(...scenario.roles.culprit.map(p => ({...p, roleType: "범인"})));
-    if (scenario.roles.suspects) allPersonas.push(...scenario.roles.suspects.map(p => ({...p, roleType: "용의자"})));
+    if (scenario.roles.detective) allPersonas.push(...scenario.roles.detective.map(p => ({...p, roleCategory: "detective"})));
+    if (scenario.roles.culprit) allPersonas.push(...scenario.roles.culprit.map(p => ({...p, roleCategory: "culprit"})));
+    if (scenario.roles.suspects) allPersonas.push(...scenario.roles.suspects.map(p => ({...p, roleCategory: "suspect"})));
   }
   
   if (allPersonas.length === 0) {
@@ -2690,14 +2690,17 @@ function renderHostCharacterList() {
   }
   
   allPersonas.forEach(persona => {
+    // 이 캐릭터를 맡은 플레이어 찾기
+    const assignedPlayer = state.players.find(p => p.character === persona.name);
+    
     const card = document.createElement("div");
     card.className = "character-card";
     card.innerHTML = `
       <div class="character-card__header">
-        <span class="character-card__badge role-badge role-badge--${persona.roleType === '탐정' ? 'detective' : persona.roleType === '범인' ? 'culprit' : 'suspect'}">${persona.roleType}</span>
+        <span class="character-card__badge role-badge role-badge--${persona.roleCategory}">${persona.title || persona.name}</span>
       </div>
       <div class="character-card__name">${persona.name}</div>
-      <div class="character-card__title">${persona.title || ""}</div>
+      ${assignedPlayer ? `<div class="character-card__player">플레이어: ${assignedPlayer.name}</div>` : '<div class="character-card__player">미배정</div>'}
       <div class="character-card__briefing">${persona.briefing ? persona.briefing.substring(0, 80) + '...' : ""}</div>
     `;
     dom.hostCharacterList.appendChild(card);

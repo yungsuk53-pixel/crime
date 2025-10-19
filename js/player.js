@@ -2021,28 +2021,31 @@ function renderCharacterList(scenario, players) {
   const allPersonas = [];
   
   if (scenario.roles) {
-    if (scenario.roles.detective) allPersonas.push(...scenario.roles.detective.map(p => ({...p, roleType: "탐정"})));
-    if (scenario.roles.culprit) allPersonas.push(...scenario.roles.culprit.map(p => ({...p, roleType: "범인"})));
-    if (scenario.roles.suspects) allPersonas.push(...scenario.roles.suspects.map(p => ({...p, roleType: "용의자"})));
+    if (scenario.roles.detective) allPersonas.push(...scenario.roles.detective.map(p => ({...p, roleCategory: "detective"})));
+    if (scenario.roles.culprit) allPersonas.push(...scenario.roles.culprit.map(p => ({...p, roleCategory: "culprit"})));
+    if (scenario.roles.suspects) allPersonas.push(...scenario.roles.suspects.map(p => ({...p, roleCategory: "suspect"})));
   }
   
   allPersonas.forEach(persona => {
+    // 이 캐릭터를 맡은 플레이어 찾기
+    const assignedPlayer = players?.find(p => p.character === persona.name);
+    
     const card = document.createElement("div");
     card.className = "character-card";
     card.innerHTML = `
       <div class="character-card__header">
-        <span class="character-card__badge role-badge role-badge--${persona.roleType === '탐정' ? 'detective' : persona.roleType === '범인' ? 'culprit' : 'suspect'}">${persona.roleType}</span>
+        <span class="character-card__badge role-badge role-badge--${persona.roleCategory}">${persona.title || persona.name}</span>
       </div>
       <div class="character-card__name">${persona.name}</div>
-      <div class="character-card__title">${persona.title || ""}</div>
+      ${assignedPlayer ? `<div class="character-card__player">플레이어: ${assignedPlayer.name}</div>` : '<div class="character-card__player">미배정</div>'}
     `;
-    card.addEventListener("click", () => showCharacterModal(persona));
+    card.addEventListener("click", () => showCharacterModal(persona, assignedPlayer));
     dom.characterList.appendChild(card);
   });
 }
 
 // 인물 프로필 모달 표시
-function showCharacterModal(persona) {
+function showCharacterModal(persona, assignedPlayer) {
   if (!dom.characterModal || !dom.characterModalBody) return;
   
   dom.characterModalBody.innerHTML = `
@@ -2050,7 +2053,7 @@ function showCharacterModal(persona) {
       <div class="character-profile__header">
         <h2>${persona.name}</h2>
         <p class="character-profile__title">${persona.title || ""}</p>
-        <span class="role-badge role-badge--${persona.roleType === '탐정' ? 'detective' : persona.roleType === '범인' ? 'culprit' : 'suspect'}">${persona.roleType}</span>
+        ${assignedPlayer ? `<p class="character-profile__player">플레이어: ${assignedPlayer.name}</p>` : '<p class="character-profile__player">미배정</p>'}
       </div>
       <div class="character-profile__body">
         <h4>프로필</h4>
