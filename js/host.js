@@ -1110,7 +1110,7 @@ function updateHostGameStatusBar() {
   if (!state.activeSession || !dom.hostGameStatusBar) return;
 
   const stage = state.activeSession.stage || "lobby";
-  const stageLabel = getStageLabel(stage);
+  const stageLabel = stageLabels[stage] || stage;
 
   if (dom.hostStatusBarStage) {
     dom.hostStatusBarStage.textContent = stageLabel;
