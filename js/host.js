@@ -1710,7 +1710,8 @@ async function assignRoles() {
   updates.push(
     api.update("players", detectivePlayer.id, {
       role: "탐정",
-      character: `${detectivePersona.name} · ${detectivePersona.title}`,
+      character: detectivePersona.name,
+      character_title: detectivePersona.title,
       role_briefing: detectivePersona.briefing || "",
       clue_summary: buildCluePackage(detectivePersona, "detective"),
       status: "active",
@@ -1723,7 +1724,8 @@ async function assignRoles() {
   updates.push(
     api.update("players", culpritPlayer.id, {
       role: "범인",
-      character: `${culpritPersona.name} · ${culpritPersona.title}`,
+      character: culpritPersona.name,
+      character_title: culpritPersona.title,
       role_briefing: culpritPersona.briefing || "",
       clue_summary: buildCluePackage(culpritPersona, "culprit"),
       status: "active",
@@ -1738,7 +1740,8 @@ async function assignRoles() {
     updates.push(
       api.update("players", player.id, {
         role: "용의자",
-        character: `${persona.name} · ${persona.title}`,
+        character: persona.name,
+        character_title: persona.title,
         role_briefing: persona.briefing || persona.summary || "",
         clue_summary: buildCluePackage(persona, "suspect"),
         status: "active",
@@ -2187,6 +2190,17 @@ function renderPlayers(players = []) {
       if (player.is_host) {
         row.classList.add("player-row--host");
       }
+      
+      // 클릭 시 세부정보 표시
+      row.style.cursor = "pointer";
+      row.addEventListener("click", () => {
+        renderHostRoleView(player);
+        // 진행 상황 탭의 플레이어 상세 뷰로 스크롤
+        if (dom.hostRoleView) {
+          dom.hostRoleView.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
+      
       dom.playerTableBody.appendChild(row);
     });
 }
