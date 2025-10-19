@@ -1,0 +1,18 @@
+[build]
+command = ""
+publish = "."
+
+[[redirects]]
+from = "/player"
+to = "/player.html"
+status = 200
+
+[[redirects]]
+from = "/host"
+to = "/host.html"
+status = 200
+
+[[redirects]]
+from = "/"
+to = "/index.html"
+status = 200
