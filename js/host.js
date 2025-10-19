@@ -2139,6 +2139,7 @@ function buildPersonalProfile(player, cluePackage) {
   if (player.name) tokens.add(player.name.toLowerCase());
 
   const matchesTarget = (text = "") => {
+    if (typeof text !== 'string') return false;
     const lower = text.toLowerCase();
     for (const token of tokens) {
       if (token && lower.includes(token)) {
