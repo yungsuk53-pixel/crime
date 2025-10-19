@@ -60,9 +60,13 @@
                 </header>
 
                 <!-- 진행 현황 상단 고정 바 -->
-                <div class="game-status-bar" id="gameStatusBar" style="display: none;">
-                    <div class="game-status-bar__stage" id="currentStageLabel">대기실</div>
-                    <div class="game-status-bar__timer" id="stageTimer">--:--</div>
+                <div class="game-status-bar" id="gameStatusBar">
+                    <div class="game-status-bar__label">
+                        <strong>현재 단계:</strong> <span id="currentStageLabel">대기실</span>
+                    </div>
+                    <div class="game-status-bar__timer">
+                        <strong>남은 시간:</strong> <span id="stageTimer">--:--</span>
+                    </div>
                 </div>
 
                 <div class="tab-nav" role="tablist">
@@ -72,7 +76,6 @@
                     <button class="tab-nav__btn" data-tab="scenario" type="button">사건 정보</button>
                     <button class="tab-nav__btn" data-tab="roles" type="button">인물 목록</button>
                     <button class="tab-nav__btn" data-tab="chat" type="button">채팅</button>
-                    <button class="tab-nav__btn" data-tab="inventory" type="button">인벤토리</button>
                     <button class="tab-nav__btn" data-tab="vote" type="button">투표</button>
                 </div>
 
@@ -137,14 +140,6 @@
                             <h3 class="card__title">등장인물 목록</h3>
                             <p class="helper-text">이번 게임에 등장하는 모든 인물들입니다. 클릭하면 프로필을 볼 수 있습니다.</p>
                             <div id="characterList" class="character-grid"></div>
-                        </article>
-                    </section>
-
-                    <section class="tab-panel" data-tab="inventory">
-                        <article class="card">
-                            <h3 class="card__title">단서 인벤토리</h3>
-                            <p class="helper-text">지금까지 공개된 단서와 증거를 단계별로 모아둔 보관함입니다.</p>
-                            <div id="inventoryList" class="inventory-list"></div>
                         </article>
                     </section>
 

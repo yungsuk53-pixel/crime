@@ -1653,6 +1653,14 @@ body {
     font-weight: 600;
     font-size: 1rem;
     color: var(--color-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.game-status-bar__label strong {
+    color: var(--color-text-muted);
+    font-weight: 500;
 }
 
 .game-status-bar__timer {
@@ -1660,6 +1668,14 @@ body {
     font-size: 1.1rem;
     color: var(--color-primary-strong);
     font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.game-status-bar__timer strong {
+    color: var(--color-text-muted);
+    font-weight: 500;
 }
 
 /* 인물 카드 그리드 */

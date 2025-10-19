@@ -1988,19 +1988,15 @@ async function initialise() {
 function updateGameStatusBar(stage, remainingSeconds) {
   if (!dom.gameStatusBar || !dom.currentStageLabel || !dom.stageTimer) return;
   
-  if (stage && stage !== "lobby") {
-    dom.gameStatusBar.style.display = "flex";
-    dom.currentStageLabel.textContent = stageLabels[stage] || stage;
-    
-    if (remainingSeconds !== undefined && remainingSeconds >= 0) {
-      const minutes = Math.floor(remainingSeconds / 60);
-      const seconds = remainingSeconds % 60;
-      dom.stageTimer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    } else {
-      dom.stageTimer.textContent = "--:--";
-    }
+  // 항상 표시
+  dom.currentStageLabel.textContent = stageLabels[stage] || stage || "대기실";
+  
+  if (remainingSeconds !== undefined && remainingSeconds >= 0) {
+    const minutes = Math.floor(remainingSeconds / 60);
+    const seconds = remainingSeconds % 60;
+    dom.stageTimer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
   } else {
-    dom.gameStatusBar.style.display = "none";
+    dom.stageTimer.textContent = "--:--";
   }
 }
 
