@@ -16,10 +16,10 @@ import { fetchRemoteScenarios } from "./firebase.js";
 function safeGetStageLabel(stage, fallback) {
   try {
     if (typeof getStageLabel === 'function') {
-      return safeGetStageLabel(stage, fallback);
+      return getStageLabel(stage, fallback);
     }
     if (typeof window.getStageLabel === 'function') {
-      return window.safeGetStageLabel(stage, fallback);
+      return window.getStageLabel(stage, fallback);
     }
     console.error('getStageLabel 함수를 찾을 수 없습니다');
     return fallback || stage || '-';
