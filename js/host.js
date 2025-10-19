@@ -1110,6 +1110,7 @@ function updateHostGameStatusBar() {
   if (!state.activeSession || !dom.hostGameStatusBar) return;
 
   const stage = state.activeSession.stage || "lobby";
+  console.log('getStageLabel 함수:', typeof getStageLabel, getStageLabel);
   const stageLabel = getStageLabel(stage);
 
   if (dom.hostStatusBarStage) {
