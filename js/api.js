@@ -19,20 +19,21 @@ function shouldUseRemoteApi() {
     return true;
   }
   const host = window.location?.hostname || "";
-  if (host === "localhost" || host === "127.0.0.1") {
+  
+  // Firebase를 항상 사용하도록 설정
+  // localhost에서도 Firebase Realtime Database 사용
+  if (window.CRIME_FORCE_LOCAL_STORAGE === true || window.CRIME_FORCE_LOCAL_STORAGE === "true") {
     return false;
   }
-  if (window.CRIME_FORCE_REMOTE_API === true || window.CRIME_FORCE_REMOTE_API === "true") {
-    return true;
-  }
   try {
-    if (window.localStorage?.getItem("crime:forceRemoteApi") === "true") {
-      return true;
+    if (window.localStorage?.getItem("crime:forceLocalStorage") === "true") {
+      return false;
     }
   } catch (error) {
     // storage access can fail in private mode
   }
-  return REMOTE_ALLOWED_HOSTS.includes(host);
+  // 기본적으로 Firebase 사용
+  return true;
 }
 
 const API_BASE_URL = buildBaseUrl().replace(/\/$/, "");
@@ -228,13 +229,17 @@ async function handleRemoteResponse(response, failureMessage) {
 async function withFallback(remoteTask, fallbackTask) {
   if (remoteApiEnabled) {
     try {
-      return await remoteTask();
+      const result = await remoteTask();
+      console.log('[Firebase] 데이터 로드 성공:', result);
+      return result;
     } catch (error) {
+      console.error('[Firebase] 오류 발생, 로컬 저장소로 폴백:', error);
       remoteApiEnabled = false;
       announceFallback(error);
       return fallbackTask();
     }
   }
+  console.warn('[LocalStorage] Firebase 비활성화 상태, 로컬 저장소 사용');
   return fallbackTask();
 }
 

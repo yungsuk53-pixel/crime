@@ -1327,15 +1327,16 @@ async function resumeHostSession(sessionCode, hostName, { silent = false } = {})
 }
 
 async function resumeHostSessionFromStorage() {
+  // 자동 재연결 비활성화
+  // 호스트가 명시적으로 세션을 선택하도록 변경
   const stored = loadHostSessionCredentials();
   if (!stored?.sessionCode) {
     return false;
   }
-  const success = await resumeHostSession(stored.sessionCode, stored.hostName, { silent: true });
-  if (!success) {
-    clearHostSessionCredentials();
-  }
-  return success;
+  
+  // 자동으로 재연결하지 않고, 사용자가 선택할 수 있도록 목록만 표시
+  // clearHostSessionCredentials(); // 저장된 정보는 유지
+  return false;
 }
 
 function startPlayerPolling() {
@@ -1393,12 +1394,16 @@ function startSessionPolling() {
 async function findSessionByCode(code) {
   try {
     const data = await api.list("sessions", { search: code, limit: "1" });
-    const match = (data.data || []).find(
-      (item) => item.code?.toLowerCase() === code.toLowerCase() && !item.deleted
+    if (!data || !data.data) {
+      console.warn('세션 데이터가 비어있습니다');
+      return null;
+    }
+    const match = data.data.find(
+      (item) => item && item.code && item.code.toLowerCase() === code.toLowerCase() && !item.deleted
     );
     return match || null;
   } catch (error) {
-    console.error(error);
+    console.error('세션 검색 중 오류:', error);
     return null;
   }
 }

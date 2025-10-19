@@ -130,26 +130,42 @@ export async function saveScenarioSet(scenario) {
 export async function firebaseList(table, params = {}) {
   const libs = await loadFirebaseModules();
   if (!libs) {
+    console.error('[Firebase] 모듈을 로드할 수 없습니다');
     throw new Error("FIREBASE_UNAVAILABLE");
   }
   const db = await ensureDatabase();
   if (!db) {
+    console.error('[Firebase] 데이터베이스를 초기화할 수 없습니다');
     throw new Error("FIREBASE_UNAVAILABLE");
   }
   const { limit = 50, search = "" } = params;
   try {
     const tableRef = libs.ref(db, table);
     const snapshot = await libs.get(tableRef);
+    
+    console.log(`[Firebase] ${table} 테이블 조회:`, snapshot.exists());
+    
     if (!snapshot.exists()) {
+      console.log(`[Firebase] ${table} 테이블이 비어있습니다`);
       return { data: [] };
     }
     const val = snapshot.val();
-    if (!val) {
+    if (!val || typeof val !== 'object') {
+      console.warn(`[Firebase] ${table} 데이터가 올바르지 않습니다:`, val);
       return { data: [] };
     }
-    let data = Object.entries(val).map(([id, value]) => ({ id, ...value }));
+    
+    let data = Object.entries(val).map(([id, value]) => {
+      if (!value || typeof value !== 'object') {
+        console.warn(`[Firebase] 잘못된 항목 발견:`, id, value);
+        return null;
+      }
+      return { id, ...value };
+    }).filter(item => item !== null);
+    
     // Filter deleted items
     data = data.filter(item => !item.deleted);
+    
     // Apply search filter
     if (search) {
       if (table === "sessions") {
@@ -160,11 +176,19 @@ export async function firebaseList(table, params = {}) {
         data = data.filter(item => item.session_code && item.session_code.toUpperCase() === search.toUpperCase());
       }
     }
+    
     // Sort by updated_at or created_at
-    data.sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
-    return { data: data.slice(0, limit) };
+    data.sort((a, b) => {
+      const timeA = new Date(a.updated_at || a.created_at || 0);
+      const timeB = new Date(b.updated_at || b.created_at || 0);
+      return timeB - timeA;
+    });
+    
+    const result = { data: data.slice(0, limit) };
+    console.log(`[Firebase] ${table} 조회 결과:`, result.data.length, '개 항목');
+    return result;
   } catch (error) {
-    console.error(`Firebase list ${table} failed`, error);
+    console.error(`[Firebase] ${table} 조회 실패:`, error);
     throw error;
   }
 }
@@ -172,25 +196,31 @@ export async function firebaseList(table, params = {}) {
 export async function firebaseCreate(table, data) {
   const libs = await loadFirebaseModules();
   if (!libs) {
+    console.error('[Firebase] 모듈을 로드할 수 없습니다');
     throw new Error("FIREBASE_UNAVAILABLE");
   }
   const db = await ensureDatabase();
   if (!db) {
+    console.error('[Firebase] 데이터베이스를 초기화할 수 없습니다');
     throw new Error("FIREBASE_UNAVAILABLE");
   }
   const now = new Date().toISOString();
   const record = {
     ...data,
     created_at: data.created_at || now,
-    updated_at: data.updated_at || now
+    updated_at: data.updated_at || now,
+    deleted: false
   };
   try {
+    console.log(`[Firebase] ${table} 생성 시도:`, record);
     const tableRef = libs.ref(db, table);
     const newRef = libs.push(tableRef);
     await libs.set(newRef, record);
-    return { id: newRef.key, ...record };
+    const result = { id: newRef.key, ...record };
+    console.log(`[Firebase] ${table} 생성 성공:`, result.id);
+    return result;
   } catch (error) {
-    console.error(`Firebase create ${table} failed`, error);
+    console.error(`[Firebase] ${table} 생성 실패:`, error);
     throw error;
   }
 }

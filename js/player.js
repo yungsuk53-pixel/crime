@@ -1120,12 +1120,16 @@ async function refreshRecentPlayerSessions() {
 async function findSessionByCode(code) {
   try {
     const data = await api.list("sessions", { search: code, limit: "1" });
-    const match = (data.data || []).find(
-      (item) => item.code?.toLowerCase() === code.toLowerCase() && !item.deleted
+    if (!data || !data.data) {
+      console.warn('세션 데이터가 비어있습니다');
+      return null;
+    }
+    const match = data.data.find(
+      (item) => item && item.code && item.code.toLowerCase() === code.toLowerCase() && !item.deleted
     );
     return match || null;
   } catch (error) {
-    console.error(error);
+    console.error('세션 검색 중 오류:', error);
     return null;
   }
 }
@@ -1133,10 +1137,14 @@ async function findSessionByCode(code) {
 async function fetchPlayerRecord(sessionCode, playerName) {
   try {
     const data = await api.list("players", { search: sessionCode, limit: "100" });
-    const players = (data.data || []).filter(
-      (item) => !item.deleted && item.session_code === sessionCode && !item.is_bot
+    if (!data || !data.data) {
+      console.warn('플레이어 데이터가 비어있습니다');
+      return null;
+    }
+    const players = data.data.filter(
+      (item) => item && !item.deleted && item.session_code === sessionCode && !item.is_bot
     );
-    return players.find((player) => player.name === playerName) || null;
+    return players.find((player) => player && player.name === playerName) || null;
   } catch (error) {
     console.error(error);
     return null;
@@ -1621,21 +1629,22 @@ function prefillSessionCode() {
 }
 
 async function attemptAutoJoin() {
+  // 자동 참가 기능 비활성화
+  // 사용자가 명시적으로 세션에 참가하도록 변경
   if (state.autoJoinAttempted) return;
   state.autoJoinAttempted = true;
+  
+  // 세션 코드만 미리 채워주기
   const stored = loadStoredCredentials();
-  if (!stored?.sessionCode || !stored?.playerName) {
-    return;
+  if (stored?.sessionCode) {
+    dom.accessSessionCode.value = stored.sessionCode;
   }
-  const joined = await joinSessionWithCredentials({
-    sessionCode: stored.sessionCode,
-    playerName: stored.playerName,
-    allowCreate: false,
-    silent: true
-  });
-  if (joined) {
-    showToast("저장된 정보로 세션에 재접속했습니다.", "success");
+  if (stored?.playerName) {
+    dom.accessPlayerName.value = stored.playerName;
   }
+  
+  // 자동 참가는 하지 않음
+  return;
 }
 
 async function handlePlayerAccess(event) {
