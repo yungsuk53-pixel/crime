@@ -2680,49 +2680,70 @@ function shuffle(array) {
 }
 
 async function sendBotClueMessages() {
-  if (!state.activeSession || state.activeSession.stage !== "discussion") return;
+  if (!state.activeSession) return;
   
-  const bots = state.players.filter(p => p.is_bot && p.role);
+  const currentStage = state.activeSession.stage;
+  // discussion 단계에서만 실행
+  if (!currentStage || !currentStage.includes("discussion")) return;
+  
+  const bots = state.players.filter(p => p.is_bot && p.clue_summary);
   
   for (const bot of bots) {
     try {
-      // 봇의 단서 정보 가져오기
-      const scenario = state.activeScenario;
-      if (!scenario) continue;
+      // 봇의 단서 패키지 파싱
+      const cluePackage = parseCluePackage(bot.clue_summary);
+      if (!cluePackage) continue;
       
-      const roleData = scenario.roles?.find(r => r.persona === bot.role);
-      if (!roleData || !roleData.clues) continue;
+      let messagesToSend = [];
       
-      // 단서 중 하나를 랜덤으로 선택
-      const cluePackage = roleData.clues;
-      let clueToShare = null;
-      
-      // truths가 있으면 우선적으로 공유
-      if (cluePackage.truths && cluePackage.truths.length > 0) {
-        clueToShare = cluePackage.truths[Math.floor(Math.random() * cluePackage.truths.length)];
-      } else if (cluePackage.rounds && cluePackage.rounds.length > 0) {
-        // rounds에서 truths 찾기
-        for (const round of cluePackage.rounds) {
-          if (round.truths && round.truths.length > 0) {
-            clueToShare = round.truths[Math.floor(Math.random() * round.truths.length)];
-            break;
+      // 1. 현재 단계에 맞는 단서 가져오기
+      if (cluePackage.rounds && cluePackage.rounds.length > 0) {
+        const currentRound = cluePackage.rounds.find(r => r.stage === currentStage);
+        if (currentRound) {
+          // truths, misdirections, prompts 모두 공유
+          if (currentRound.truths && currentRound.truths.length > 0) {
+            messagesToSend.push(...currentRound.truths);
+          }
+          if (currentRound.misdirections && currentRound.misdirections.length > 0) {
+            messagesToSend.push(...currentRound.misdirections);
           }
         }
       }
       
-      if (clueToShare) {
-        // 채팅 메시지로 전송
+      // 2. rounds가 없으면 기본 단서 사용
+      if (messagesToSend.length === 0) {
+        if (cluePackage.truths && cluePackage.truths.length > 0) {
+          messagesToSend.push(...cluePackage.truths.slice(0, 2)); // 처음 2개만
+        }
+        if (cluePackage.misdirections && cluePackage.misdirections.length > 0) {
+          messagesToSend.push(cluePackage.misdirections[0]); // 첫 번째만
+        }
+      }
+      
+      // 3. 시각적 증거도 텍스트로 공유
+      if (cluePackage.visualEvidence && cluePackage.visualEvidence.length > 0) {
+        cluePackage.visualEvidence.forEach(evidence => {
+          messagesToSend.push(`[증거: ${evidence.title}] ${evidence.description}`);
+        });
+      }
+      
+      // 4. 메시지 전송 (각 메시지를 개별적으로)
+      for (const message of messagesToSend) {
         await api.create("chat_messages", {
           session_code: state.activeSession.code,
           player_name: bot.name,
-          role: bot.role,
-          message: clueToShare,
+          role: bot.character || bot.role, // 배역 이름 사용
+          message: message,
           sent_at: new Date().toISOString()
         });
         
-        // 랜덤 딜레이 추가 (1-3초)
-        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+        // 메시지 간 간격 (0.5-1.5초)
+        await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
       }
+      
+      // 봇 간 간격 (1-2초)
+      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+      
     } catch (error) {
       console.error(`봇 ${bot.name} 단서 공유 실패:`, error);
     }

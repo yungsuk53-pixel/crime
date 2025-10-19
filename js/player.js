@@ -57,6 +57,7 @@ const dom = {
   scenarioTimeline: document.getElementById("playerScenarioTimeline"),
   evidencePhysical: document.getElementById("playerEvidencePhysical"),
   evidenceDigital: document.getElementById("playerEvidenceDigital"),
+  evidenceVisual: document.getElementById("playerEvidenceVisual"),
   lobbyStatus: document.getElementById("lobbyStatus"),
   playerRoster: document.getElementById("playerRoster"),
   chatLog: document.getElementById("playerChatLog"),
@@ -1102,16 +1103,29 @@ function renderSessionMeta(session, scenario) {
 }
 
 function renderScenario(scenario) {
-  if (!scenario) return;
-  dom.scenarioTitle.textContent = scenario.title;
-  dom.scenarioTagline.textContent = scenario.tagline;
-  dom.scenarioSummary.textContent = scenario.summary;
-  renderList(dom.scenarioConflicts, scenario.conflicts);
-  renderList(dom.scenarioPrompts, scenario.prompts);
-  renderTimeline(dom.scenarioTimeline, scenario.timeline);
-  renderList(dom.evidencePhysical, scenario.evidence.physical);
-  renderList(dom.evidenceDigital, scenario.evidence.digital);
-  renderVisualEvidence(dom.evidencePhysical, scenario.evidence.visual);
+  if (!scenario) {
+    console.warn("시나리오 정보가 없습니다.");
+    return;
+  }
+  
+  console.log("시나리오 렌더링:", scenario);
+  
+  dom.scenarioTitle.textContent = scenario.title || "제목 없음";
+  dom.scenarioTagline.textContent = scenario.tagline || "";
+  dom.scenarioSummary.textContent = scenario.summary || "";
+  
+  // conflicts와 prompts는 배열이어야 함
+  renderList(dom.scenarioConflicts, Array.isArray(scenario.conflicts) ? scenario.conflicts : []);
+  renderList(dom.scenarioPrompts, Array.isArray(scenario.prompts) ? scenario.prompts : []);
+  
+  // timeline은 {time, description} 객체 배열이어야 함
+  renderTimeline(dom.scenarioTimeline, Array.isArray(scenario.timeline) ? scenario.timeline : []);
+  
+  // evidence 객체 안전하게 접근
+  const evidence = scenario.evidence || {};
+  renderList(dom.evidencePhysical, Array.isArray(evidence.physical) ? evidence.physical : []);
+  renderList(dom.evidenceDigital, Array.isArray(evidence.digital) ? evidence.digital : []);
+  renderVisualEvidence(dom.evidenceVisual, Array.isArray(evidence.visual) ? evidence.visual : []);
 }
 
 function toggleChatAvailability(enabled) {
