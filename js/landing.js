@@ -350,6 +350,7 @@ function buildNanobananaPromptPayload(scenario) {
     `\n사건명: ${scenario?.title || "-"}` +
     `\n톤: ${scenario?.tone || "-"}` +
     `\n요약: ${summary}` +
+    `\n문자 인코딩: All text must remain in UTF-8 Hangul. Keep every Korean label exactly as provided.` +
     `\n요청 자산: ${slots.length}개`;
 
   if (!slots.length) {
@@ -583,7 +584,7 @@ function applyScenarioDraft(rawScenario, sourceLabel = "업로드") {
 function buildPromptTemplate() {
   return {
     instructions:
-      "아래 시나리오 구조에 맞춰 고품질 범죄 추리 게임을 만들어주세요. visual 증거는 Nanobanana에 전달할 imagePrompt를 반드시 포함하고, 실제 이미지는 별도 번들로 업로드할 수 있도록 설명만 제공합니다.",
+      "아래 시나리오 구조에 맞춰 고품질 범죄 추리 게임을 만들어주세요. visual 증거는 Nanobanana에 전달할 imagePrompt를 반드시 포함하고, 실제 이미지는 별도 번들로 업로드할 수 있도록 설명만 제공합니다. 모든 이미지 프롬프트에는 'All text must remain in UTF-8 Hangul.' 과 같이 한글 텍스트가 깨지지 않도록 UTF-8 유지 문구를 꼭 추가하세요.",
     scenario: {
       id: "unique-kebab-case-id",
       title: "매력적이고 기억에 남는 제목",

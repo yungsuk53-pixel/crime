@@ -968,6 +968,7 @@ export const SCENARIO_GENERATION_GUIDE = `
 - 실제 그래픽은 Nanobanana로 생성한 뒤 별도 번들(예: ZIP)로 업로드하며, JSON에는 경로나 참조만 남깁니다.
 - HTML 블록에는 레이아웃과 복기용 텍스트만 포함하고, 실물 이미지는 Nanobanana 출력물을 삽입해 사용합니다.
 - 같은 자산을 재사용할 경우에도 \`imagePrompt\`를 명시하여 Nanobanana에 동일한 결과를 재요청할 수 있도록 합니다.
+- **중요**: 한글 텍스트가 포함된 이미지는 반드시 \`All text must remain in UTF-8 Hangul.\` 과 같이 UTF-8 유지 문구를 프롬프트에 추가하고, 필요한 한글 표기를 그대로 기재해 주세요.
 
 ### HTML 스타일링 절대 규칙:
 1. **반드시 인라인 스타일 사용** - style 속성에 모든 CSS 포함
