@@ -3,7 +3,7 @@ const firebaseConfig = {
   authDomain: "meeting-8a180.firebaseapp.com",
   databaseURL: "https://meeting-8a180-default-rtdb.firebaseio.com",
   projectId: "meeting-8a180",
-  storageBucket: "meeting-8a180.firebasestorage.app",
+  storageBucket: "meeting-8a180.appspot.com",
   messagingSenderId: "666012646007",
   appId: "1:666012646007:web:ae60fb9ab57730bb5de472",
   measurementId: "G-37RQG0RYWM"

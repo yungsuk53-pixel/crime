@@ -13,6 +13,8 @@ let nanobananaPromptText = "";
 let graphicsFiles = [];
 let graphicsAssetsMeta = [];
 let scenarioNeedsGraphics = false;
+let nanobananaSlots = [];
+const graphicsFileAssignments = new Map();
 
 function renderScenarioCards() {
   const grid = document.getElementById("scenarioGrid");
@@ -57,6 +59,99 @@ function toggleSaveButton(enabled) {
 
 function ensureArray(value) {
   return Array.isArray(value) ? value : [];
+}
+
+function slugify(value = "") {
+  return value
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "slot";
+}
+
+function escapeHtml(text = "") {
+  return text
+    .toString()
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function getRoleGroupLabel(roleKey) {
+  if (!roleKey) return "공용 증거";
+  const match = ROLE_GROUP_CONFIG.find((group) => group.key === roleKey);
+  return match ? match.label : "공용 증거";
+}
+
+function getFileKey(file) {
+  if (!file) return "";
+  const name = file.name || "unnamed";
+  const size = Number.isFinite(file.size) ? file.size : 0;
+  const lastModified = Number.isFinite(file.lastModified) ? file.lastModified : 0;
+  return [name, size, lastModified].join("__");
+}
+
+function getSlotByKey(slotKey) {
+  if (!slotKey) return null;
+  return nanobananaSlots.find((slot) => slot.slotKey === slotKey) || null;
+}
+
+function buildSlotAssignmentSnapshot(slot) {
+  if (!slot) return null;
+  return {
+    slotKey: slot.slotKey,
+    context: slot.context,
+    title: slot.title,
+    stage: slot.stage,
+    stageLabel: slot.stage && stageLabels?.[slot.stage] ? stageLabels[slot.stage] : slot.stage || "공용",
+    roleGroup: slot.roleGroup || null,
+    roleLabel: getRoleGroupLabel(slot.roleGroup),
+    placeholder: Boolean(slot.placeholder)
+  };
+}
+
+function decorateAssetWithSlotMeta(asset, slotKey) {
+  const slot = getSlotByKey(slotKey);
+  if (!slot) {
+    return { ...asset, slotKey: slotKey || asset.slotKey || null };
+  }
+  return {
+    ...asset,
+    slotKey: slot.slotKey,
+    slotAssignment: buildSlotAssignmentSnapshot(slot)
+  };
+}
+
+function formatSlotLabel(slot) {
+  if (!slot) {
+    return "증거 미지정";
+  }
+  const stageLabel = slot.stage && stageLabels?.[slot.stage]
+    ? stageLabels[slot.stage]
+    : slot.stage === "global"
+      ? "공용"
+      : slot.stage || "단계";
+  const prefix = slot.placeholder ? "[설계 필요] " : "";
+  const roleLabel = getRoleGroupLabel(slot.roleGroup);
+  return `${prefix}${roleLabel} · ${stageLabel} · ${slot.title}`.trim();
+}
+
+function pruneFileAssignments() {
+  const validFileKeys = new Set(graphicsFiles.map(getFileKey));
+  Array.from(graphicsFileAssignments.keys()).forEach((key) => {
+    if (!validFileKeys.has(key)) {
+      graphicsFileAssignments.delete(key);
+    }
+  });
+  const validSlotKeys = new Set(nanobananaSlots.map((slot) => slot.slotKey));
+  Array.from(graphicsFileAssignments.entries()).forEach(([fileKey, slotKey]) => {
+    if (!slotKey || !validSlotKeys.has(slotKey)) {
+      graphicsFileAssignments.delete(fileKey);
+    }
+  });
 }
 
 const VISUAL_STAGE_KEYS = ["clue_a", "clue_b", "clue_c"];
@@ -338,7 +433,9 @@ function generatePlaceholderSlots(scenario, perRoleTarget, slots) {
         stageKey,
         hints
       });
+      const placeholderKey = `placeholder-${group.key}-${slugify(personaName)}-${stageKey}-${i}`;
       placeholders.push({
+        slotKey: placeholderKey,
         context: `${personaName} (${group.label})`,
         stage: stageKey,
         title: `${personaName} ${stageLabels[stageKey] || stageKey} 증거 설계`,
@@ -357,6 +454,7 @@ function generatePlaceholderSlots(scenario, perRoleTarget, slots) {
 function collectVisualEvidenceSlots(scenario) {
   const slots = [];
   const pushSlot = ({
+    key,
     context,
     stage,
     title,
@@ -375,6 +473,7 @@ function collectVisualEvidenceSlots(scenario) {
     const htmlText = stripHtmlTags(html || "");
     const englishList = normaliseEnglishTextList(allowedEnglishText);
     slots.push({
+      slotKey: key || `slot-${slots.length + 1}`,
       context,
       stage,
       title,
@@ -389,6 +488,7 @@ function collectVisualEvidenceSlots(scenario) {
 
   ensureArray(scenario?.evidence?.visual).forEach((item, index) => {
     pushSlot({
+      key: `visual-global-${index}`,
       context: "공용 증거",
       stage: "global",
       title: item.title || `공용 시각 증거 ${index + 1}`,
@@ -401,11 +501,13 @@ function collectVisualEvidenceSlots(scenario) {
   });
 
   const collectPersona = (personas = [], roleLabel, roleGroup) => {
-    personas.forEach((persona) => {
+    personas.forEach((persona, personaIndex) => {
+      const personaSlug = slugify(`${persona?.name || roleLabel || "persona"}-${personaIndex}`);
       const visualMap = normaliseVisualEvidenceCollection(persona.visualEvidence);
       VISUAL_STAGE_KEYS.forEach((stageKey) => {
         ensureArray(visualMap[stageKey]).forEach((item, idx) => {
           pushSlot({
+            key: `visual-${roleGroup || "shared"}-${personaSlug}-${stageKey}-${idx}`,
             context: `${persona.name || roleLabel} (${roleLabel})`,
             stage: stageKey,
             title: item.title || `${roleLabel} 증거 ${idx + 1}`,
@@ -801,6 +903,7 @@ function summariseGraphicsAssets(metaList = [], limit = 3) {
 function refreshGraphicsUploadStatus() {
   if (!scenarioNeedsGraphics) {
     updateGraphicsBundleStatus("시각 자료가 없어 Nanobanana 이미지가 필요하지 않습니다.", "info");
+    renderGraphicsAssignmentControls();
     return;
   }
 
@@ -809,6 +912,7 @@ function refreshGraphicsUploadStatus() {
       `Nanobanana 이미지 ${graphicsAssetsMeta.length}개 연결됨 · ${summariseGraphicsAssets(graphicsAssetsMeta)}`,
       "success"
     );
+    renderGraphicsAssignmentControls();
     return;
   }
 
@@ -818,6 +922,7 @@ function refreshGraphicsUploadStatus() {
       `업로드 대기 중: ${graphicsFiles.length}개 · 총 ${formatBytes(totalBytes)} · 저장 시 자동 업로드됩니다.`,
       "info"
     );
+    renderGraphicsAssignmentControls();
     return;
   }
 
@@ -825,6 +930,7 @@ function refreshGraphicsUploadStatus() {
     "필수 시각 자산이 있습니다. Nanobanana 이미지 파일(PNG/JPG)을 모두 선택해 업로드해 주세요.",
     "warn"
   );
+  renderGraphicsAssignmentControls();
 }
 
 function resetGraphicsBundleTracking() {
@@ -832,6 +938,8 @@ function resetGraphicsBundleTracking() {
   scenarioNeedsGraphics = false;
   graphicsFiles = [];
   graphicsAssetsMeta = [];
+  nanobananaSlots = [];
+  graphicsFileAssignments.clear();
   const promptField = document.getElementById("nanobananaPrompt");
   if (promptField) {
     promptField.value = "";
@@ -841,6 +949,175 @@ function resetGraphicsBundleTracking() {
     bundleInput.value = "";
   }
   updateGraphicsBundleStatus("시나리오가 로드되면 필요한 Nanobanana 이미지와 업로드 상태가 표시됩니다.", "info");
+  renderGraphicsAssignmentControls();
+}
+
+function describeAssignmentHelperText({ pendingFiles, slotCount }) {
+  if (!scenarioNeedsGraphics) {
+    return "시각 자산이 필요 없으면 이 영역이 비활성화됩니다.";
+  }
+  if (!slotCount) {
+    return "Nanobanana 프롬프트에 시각 증거가 발견되지 않았습니다. JSON에 visualEvidence 항목을 포함해 주세요.";
+  }
+  if (!pendingFiles) {
+    return `Nanobanana 증거 ${slotCount}건이 준비되었습니다. 이미지를 선택해 어떤 증거인지 지정하세요.`;
+  }
+  const assignedCount = graphicsFiles.reduce((count, file) => {
+    const key = getFileKey(file);
+    return count + (graphicsFileAssignments.has(key) ? 1 : 0);
+  }, 0);
+  const remaining = pendingFiles - assignedCount;
+  if (remaining > 0) {
+    return `파일 ${pendingFiles}개 중 ${remaining}개가 미지정입니다. 각 이미지를 해당 증거와 연결해 주세요.`;
+  }
+  return "모든 대기 파일이 Nanobanana 증거에 연결되었습니다. 저장하면 이 정보가 함께 업로드됩니다.";
+}
+
+function renderGraphicsAssignmentControls() {
+  const mapper = document.getElementById("graphicsEvidenceMapper");
+  const helper = document.getElementById("graphicsEvidenceHelper");
+  const pendingList = document.getElementById("graphicsEvidenceList");
+  const uploadedList = document.getElementById("graphicsUploadedList");
+  if (!mapper) return;
+
+  pruneFileAssignments();
+
+  if (!scenarioNeedsGraphics) {
+    mapper.classList.add("graphics-mapper--hidden");
+    if (helper) {
+      helper.textContent = "시각 자산이 필요 없으면 이 영역이 숨겨집니다.";
+    }
+    if (pendingList) pendingList.innerHTML = "";
+    if (uploadedList) uploadedList.innerHTML = "";
+    return;
+  }
+
+  mapper.classList.remove("graphics-mapper--hidden");
+  const slotCount = nanobananaSlots.length;
+  const pendingFiles = graphicsFiles.length;
+  if (helper) {
+    helper.textContent = describeAssignmentHelperText({ pendingFiles, slotCount });
+  }
+
+  if (pendingList) {
+    if (!pendingFiles) {
+      pendingList.innerHTML = '<p class="helper-text">이미지를 선택하면 파일별 매핑 옵션이 여기에 나타납니다.</p>';
+    } else if (!slotCount) {
+      pendingList.innerHTML = '<p class="helper-text helper-text--warn">시나리오에 Nanobanana 증거가 없어서 파일을 연결할 수 없습니다. 프롬프트를 다시 생성해 주세요.</p>';
+    } else {
+      const optionMarkupCache = nanobananaSlots.map((slot) => ({
+        slotKey: slot.slotKey,
+        label: escapeHtml(formatSlotLabel(slot)),
+        valueAttr: escapeHtml(slot.slotKey)
+      }));
+      pendingList.innerHTML = graphicsFiles
+        .map((file, index) => {
+          const fileKey = getFileKey(file);
+          const selectedSlotKey = graphicsFileAssignments.get(fileKey) || "";
+          const options = ['<option value="">증거 선택</option>']
+            .concat(
+              optionMarkupCache.map((option) =>
+                `<option value="${option.valueAttr}"${option.slotKey === selectedSlotKey ? " selected" : ""}>${option.label}</option>`
+              )
+            )
+            .join("");
+          return `
+            <div class="graphics-mapper__row">
+              <div class="graphics-mapper__file">
+                <strong>${escapeHtml(file.name || `파일 ${index + 1}`)}</strong>
+                <span>${formatBytes(file.size)}</span>
+              </div>
+              <label class="graphics-mapper__selector">
+                <span>연결할 증거</span>
+                <select class="graphics-mapper__select" data-file-key="${escapeHtml(fileKey)}">
+                  ${options}
+                </select>
+              </label>
+            </div>
+          `;
+        })
+        .join("\n");
+    }
+  }
+
+  if (uploadedList) {
+    if (!graphicsAssetsMeta.length) {
+      uploadedList.innerHTML = "";
+    } else {
+      const items = graphicsAssetsMeta
+        .map((asset) => {
+          const slot = asset.slotAssignment || getSlotByKey(asset.slotKey);
+          const slotLabel = slot ? formatSlotLabel(slot) : "연결 정보 없음";
+          return `
+            <li class="graphics-mapper__uploaded-item">
+              <span class="graphics-mapper__uploaded-name">${escapeHtml(asset.originalName || asset.path || "Firebase asset")}</span>
+              <span class="graphics-mapper__uploaded-slot">${escapeHtml(slotLabel)}</span>
+            </li>
+          `;
+        })
+        .join("\n");
+      uploadedList.innerHTML = `
+        <h6>Firebase 업로드 완료</h6>
+        <ul>
+          ${items}
+        </ul>
+      `;
+    }
+  }
+}
+
+function handleGraphicsAssignmentChange(event) {
+  const target = event.target;
+  if (!target.classList?.contains("graphics-mapper__select")) {
+    return;
+  }
+  const fileKey = target.dataset.fileKey;
+  if (!fileKey) return;
+  const slotKey = target.value;
+  if (!slotKey) {
+    graphicsFileAssignments.delete(fileKey);
+  } else {
+    graphicsFileAssignments.set(fileKey, slotKey);
+  }
+  renderGraphicsAssignmentControls();
+}
+
+function validateGraphicsAssignments() {
+  if (!graphicsFiles.length) {
+    return { valid: true };
+  }
+  if (!nanobananaSlots.length) {
+    return {
+      valid: false,
+      message: "Nanobanana 프롬프트에서 증거 목록을 불러오지 못했습니다. JSON을 다시 로드한 뒤 시도하세요."
+    };
+  }
+  const missingAssignments = graphicsFiles.filter((file) => {
+    const key = getFileKey(file);
+    return !graphicsFileAssignments.has(key);
+  });
+  if (missingAssignments.length) {
+    return {
+      valid: false,
+      message: `Nanobanana 이미지 ${missingAssignments.length}개가 어떤 증거인지 지정되지 않았습니다. 각 파일에 증거를 선택해 주세요.`
+    };
+  }
+  return { valid: true };
+}
+
+function reconcileExistingAssetAssignments() {
+  if (!graphicsAssetsMeta.length) {
+    return;
+  }
+  graphicsAssetsMeta = graphicsAssetsMeta.map((asset) => {
+    if (asset.slotAssignment?.slotKey) {
+      return decorateAssetWithSlotMeta(asset, asset.slotAssignment.slotKey);
+    }
+    if (asset.slotKey) {
+      return decorateAssetWithSlotMeta(asset, asset.slotKey);
+    }
+    return asset;
+  });
 }
 
 function refreshNanobananaPromptUI(scenario, options = {}) {
@@ -864,6 +1141,9 @@ function refreshNanobananaPromptUI(scenario, options = {}) {
 
   const preferredCount = getNanobananaCountPreference();
   const payload = buildNanobananaPromptPayload(scenario, preferredCount);
+  nanobananaSlots = payload.slots || [];
+  pruneFileAssignments();
+  reconcileExistingAssetAssignments();
   const hasOverride = preferredCount !== null;
   const shouldUseExistingPrompt = existingAssets.nanobananaPrompt && !hasOverride && !forceRegeneratePrompt;
 
@@ -896,7 +1176,7 @@ function handleGraphicsFilesChange(event) {
   const files = Array.from(event.target?.files || []);
   graphicsFiles = files;
   if (files.length) {
-    graphicsAssetsMeta = [];
+    graphicsFileAssignments.clear();
   }
   if (!files.length) {
     refreshGraphicsUploadStatus();
@@ -1324,13 +1604,27 @@ async function handleSaveScenario() {
     setBuilderStatus("필수 시각 자산이 있으므로 Nanobanana 이미지 파일을 업로드해야 합니다.", "warn");
     return;
   }
+  if (scenarioNeedsGraphics && hasPendingFiles) {
+    const assignmentValidation = validateGraphicsAssignments();
+    if (!assignmentValidation.valid) {
+      setBuilderStatus(assignmentValidation.message, "warn");
+      return;
+    }
+  }
   savingScenario = true;
   toggleSaveButton(true);
   try {
     if (scenarioNeedsGraphics && hasPendingFiles) {
       setBuilderStatus("Nanobanana 이미지를 업로드하는 중입니다...", "info");
-      graphicsAssetsMeta = await uploadGraphicsAssets(graphicsFiles, draftScenario.id);
+      const pendingFiles = [...graphicsFiles];
+      const uploads = await uploadGraphicsAssets(pendingFiles, draftScenario.id);
+      graphicsAssetsMeta = uploads.map((asset, index) => {
+        const fileKey = getFileKey(pendingFiles[index]);
+        const slotKey = graphicsFileAssignments.get(fileKey) || null;
+        return decorateAssetWithSlotMeta(asset, slotKey);
+      });
       graphicsFiles = [];
+      graphicsFileAssignments.clear();
       refreshGraphicsUploadStatus();
     }
 
@@ -1401,6 +1695,7 @@ function setupScenarioBuilder() {
   const copyNanobananaBtn = document.getElementById("copyNanobananaPrompt");
   const graphicsInput = document.getElementById("graphicsBundleInput");
   const nanobananaCountInput = document.getElementById("userNanobananaCount");
+  const graphicsMapper = document.getElementById("graphicsEvidenceMapper");
 
   if (downloadBtn) {
     downloadBtn.addEventListener("click", downloadPromptTemplate);
@@ -1434,6 +1729,9 @@ function setupScenarioBuilder() {
   }
   if (nanobananaCountInput) {
     nanobananaCountInput.addEventListener("input", handleNanobananaCountInput);
+  }
+  if (graphicsMapper) {
+    graphicsMapper.addEventListener("change", handleGraphicsAssignmentChange);
   }
   resetGraphicsBundleTracking();
   displayDraftScenario(null);
