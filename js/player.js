@@ -212,32 +212,52 @@ function renderList(element, items = []) {
   });
 }
 
-function appendTranslationToggle(container, translationText) {
-  const text = typeof translationText === "string" ? translationText.trim() : "";
-  if (!text) return;
+const FIREBASE_ASSET_HOST = "firebasestorage.googleapis.com";
 
-  const panelId = `translation-${Math.random().toString(36).slice(2, 9)}`;
-  const toggleBtn = document.createElement("button");
-  toggleBtn.type = "button";
-  toggleBtn.className = "btn btn--ghost translation-toggle";
-  toggleBtn.textContent = "번역 보기";
-  toggleBtn.setAttribute("aria-expanded", "false");
-  toggleBtn.setAttribute("aria-controls", panelId);
+function rewriteFirebaseStorageUrl(candidate) {
+  if (typeof candidate !== "string" || !candidate.includes(FIREBASE_ASSET_HOST)) {
+    return candidate;
+  }
+  try {
+    const base = typeof window !== "undefined" && window.location ? window.location.origin : "https://zippy-bonbon-5a7dd7.netlify.app";
+    const parsed = new URL(candidate, base);
+    if (!parsed.hostname.includes(FIREBASE_ASSET_HOST)) {
+      return candidate;
+    }
+    const encodedPath = parsed.searchParams.get("name");
+    if (!encodedPath) {
+      return candidate;
+    }
+    parsed.pathname = parsed.pathname.replace(/\/o$/, `/o/${encodedPath}`);
+    parsed.searchParams.delete("name");
+    if (!parsed.searchParams.has("alt")) {
+      parsed.searchParams.set("alt", "media");
+    }
+    return parsed.toString();
+  } catch (error) {
+    console.warn("Firebase URL rewrite failed", error);
+    return candidate;
+  }
+}
 
-  const panel = document.createElement("div");
-  panel.id = panelId;
-  panel.className = "translation-panel";
-  panel.textContent = text;
-  panel.hidden = true;
-
-  toggleBtn.addEventListener("click", () => {
-    const expanded = toggleBtn.getAttribute("aria-expanded") === "true";
-    toggleBtn.setAttribute("aria-expanded", String(!expanded));
-    panel.hidden = expanded;
-    toggleBtn.textContent = expanded ? "번역 보기" : "번역 숨기기";
+function normaliseFirebaseAssetLinks(container) {
+  if (!container) {
+    return;
+  }
+  const elements = container.querySelectorAll(
+    "img[src*='firebasestorage.googleapis.com'],video[src*='firebasestorage.googleapis.com'],source[src*='firebasestorage.googleapis.com'],a[href*='firebasestorage.googleapis.com']"
+  );
+  elements.forEach((node) => {
+    const attr = node.tagName === "A" ? "href" : "src";
+    const current = node.getAttribute(attr);
+    if (!current) {
+      return;
+    }
+    const updated = rewriteFirebaseStorageUrl(current);
+    if (updated && updated !== current) {
+      node.setAttribute(attr, updated);
+    }
   });
-
-  container.append(toggleBtn, panel);
 }
 
 function renderVisualEvidence(element, visualItems = []) {
@@ -286,8 +306,8 @@ function renderVisualEvidence(element, visualItems = []) {
       container.appendChild(promptInfo);
     }
 
-    appendTranslationToggle(container, item.translation);
-    
+    normaliseFirebaseAssetLinks(container);
+
     element.appendChild(container);
   });
 }

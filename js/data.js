@@ -969,8 +969,8 @@ export const SCENARIO_GENERATION_GUIDE = String.raw`
 - HTML 블록에는 레이아웃과 복기용 텍스트만 포함하고, 실물 이미지는 Nanobanana 출력물을 삽입해 사용합니다.
 - 같은 자산을 재사용할 경우에도 \`imagePrompt\`를 명시하여 Nanobanana에 동일한 결과를 재요청할 수 있도록 합니다.
 - **허용된 영어 텍스트만 이미지에 포함**: 텍스트가 꼭 필요할 때는 \`visualEvidence\` 항목에 \`allowedEnglishText\` 배열을 추가해 사용할 영어 문구를 정확히 명시하세요. 프롬프트 끝에는 반드시 "Use ONLY: ... (exact spelling/case). No other text." 와 같은 지시를 넣고, 배열에 없는 문구는 금지합니다.
-- **한글은 이미지 밖에서 제공**: Nanobanana 결과물에는 Hangul을 절대 그리지 말고, 한국어 문구는 HTML 증거 또는 번역 버튼(UI)이 제공하는 \`translation\` 필드로만 노출합니다.
-- **translation 메타데이터**: 번역 버튼에 노출할 한국어 설명이 있다면 \`visualEvidence.translation\`에 한글 문장을 작성하세요. Nanobanana 프롬프트에는 "Korean translation will be shown via UI button, keep artwork text-free except allowed English phrases." 를 덧붙입니다.
+- **모든 한글은 HTML로만 제공**: Nanobanana 결과물에는 Hangul뿐 아니라 임의의 문자도 들어가면 안 됩니다. 필요한 설명과 캡션은 HTML 증거나 시나리오 본문에만 작성하고, 이미지는 순수한 비주얼 단서로 유지하세요.
+- **translation 필드 금지**: 더 이상 \`visualEvidence.translation\` 필드를 사용하지 않습니다. 한국어 텍스트는 HTML 레이어나 별도의 내러티브에만 두고, Nanobanana 프롬프트엔 항상 "No text of any language" 같은 지시를 넣어 주세요.
 - **텍스트 없음 기본값**: \`allowedEnglishText\`가 비어 있거나 생략되면 "No text. Leave blank signage for HTML overlay." 라는 지시를 필수로 넣어 모든 배너를 비워두게 하세요.
 - **텍스트 증거는 HTML로만 구현**: 영수증, 문자, 리포트처럼 긴 문장이 필요한 증거는 \`visualEvidence.html\`에 인라인 스타일로 작성하고, Nanobanana 이미지에는 해당 내용을 그리지 않습니다.
 - **시각 단서 설계**: Nanobanana 이미지 프롬프트에는 인상착의, 동선, 주변 사물 배치, 손동작 등 **텍스트 없이도 추리할 수 있는 비주얼 단서**를 구체적으로 명시하세요.
@@ -1080,8 +1080,7 @@ export const SCENARIO_GENERATION_GUIDE = String.raw`
         "description": "증거 설명",
         "html": "<!-- 시각적 증거를 표현할 HTML 코드 -->",
             "imagePrompt": "이미지 생성 AI를 위한 상세한 프롬프트 (선택사항)",
-            "allowedEnglishText": ["AUTHORIZED PERSONNEL ONLY"],
-            "translation": "한국어 번역은 UI 버튼으로 표시 (예: 허가받은 인원만 출입 가능)"
+            "allowedEnglishText": ["AUTHORIZED PERSONNEL ONLY"]
       }
     ]
   },
@@ -1218,15 +1217,13 @@ export const SCENARIO_GENERATION_GUIDE = String.raw`
 }
 \`\`\`
 
-### allowedEnglishText & translation 필드 사용법
+### allowedEnglishText 사용법
 
 - \\\`allowedEnglishText\\\`: Nanobanana 이미지에 그대로 들어가야 하는 **영어 문구 배열**입니다. 대문자/소문자, 구두점까지 정확히 기입하세요.
   - 예) \\\`["KEEP DOOR LOCKED", "AUTHORIZED PERSONNEL ONLY"]\\\`
   - 배열이 비어 있으면 이미지에는 어떤 텍스트도 허용되지 않습니다.
-- \\\`translation\\\`: 플레이어에게 제공할 한국어 설명으로, UI의 번역 버튼을 눌렀을 때만 노출합니다.
-  - 예) \\\`"문을 잠그세요 / 허가된 인원만 출입"\\\`
-- 프롬프트에는 "Use ONLY the allowedEnglishText phrases. Hangul translation will appear in UI." 라고 명시하고, 빈칸/배너 위치를 설명해 HTML 오버레이가 정확히 들어갈 수 있게 하세요.
-- Hangul 본문은 반드시 HTML 증거 또는 \\\`translation\\\`에만 남기고, Nanobanana 이미지에는 어떤 한글도 그리지 않습니다.
+- 프롬프트에는 "Use ONLY the allowedEnglishText phrases. Leave every other surface completely blank." 같은 문장을 넣어 임의 텍스트를 차단하고, 오버레이 위치를 구체적으로 안내하세요.
+- Hangul을 비롯한 모든 언어의 본문 텍스트는 HTML 증거에만 작성하고, Nanobanana 이미지에는 절대 삽입하지 마세요.
 
 ## 🎨 시각적 증거 생성 가이드
 

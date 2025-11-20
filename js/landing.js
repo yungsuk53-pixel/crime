@@ -79,23 +79,17 @@ function filterHangulSafeStrings(list = []) {
   });
 }
 
-const BLANK_ZONE_HINTS = {
-  clue_a: "Place the blank banner across the upper 20% of the canvas so Hangul text can sit above the scene.",
-  clue_b: "Reserve an empty plaque along the lower third, wide enough for two lines of Hangul text.",
-  clue_c: "Keep a centered blank rectangle (no texture) for the climactic evidence caption.",
-  global: "Add a neutral blank card near the foreground for overlaying shared labels.",
-  default: "Keep at least one obvious blank signage area with soft edges so HTML text can be overlaid later."
+const VISUAL_FOCUS_HINTS = {
+  clue_a: "Highlight the immediate physical clue (e.g., fabric stains, tool wear, body posture) with tight framing.",
+  clue_b: "Emphasise environmental traces such as footprints, residue, or displaced props without adding labels.",
+  clue_c: "Deliver a dramatic close-up of the decisive physical evidence—textures and lighting must explain everything.",
+  global: "Showcase shared physical context (gallery wall, workshop bench, locker interior) with storytelling objects only.",
+  default: "Compose the scene so viewers infer the story purely from objects, lighting, and character poses—never from text."
 };
 
-function describeBlankOverlayZone(slot) {
-  const base = "Leave a perfectly blank, texture-free banner with crisp edges and no symbols.";
-  if (!slot) {
-    return `${base} Keep it centered in the composition.`;
-  }
-  if (slot.htmlText) {
-    return `${base} Mirror the empty container indicated in the HTML reference snippet so the overlay fits precisely.`;
-  }
-  const hint = BLANK_ZONE_HINTS[slot.stage] || BLANK_ZONE_HINTS.default;
+function describeVisualFocusHint(slot) {
+  const base = "Focus purely on physical cues—no captions, signage, interface chrome, or lettering of any kind.";
+  const hint = VISUAL_FOCUS_HINTS[slot?.stage] || VISUAL_FOCUS_HINTS.default;
   return `${base} ${hint}`;
 }
 
@@ -119,8 +113,7 @@ function normaliseVisualEvidenceCollection(source) {
     description: item?.description || "",
     html: item?.html || "",
     imagePrompt: item?.imagePrompt || "",
-    allowedEnglishText: normaliseEnglishTextList(item?.allowedEnglishText),
-    translation: item?.translation || ""
+    allowedEnglishText: normaliseEnglishTextList(item?.allowedEnglishText)
   });
 
   if (!source) {
@@ -169,13 +162,15 @@ function collectVisualEvidenceSlots(scenario) {
     description,
     html,
     prompt,
-    allowedEnglishText = [],
-    translation = ""
+    allowedEnglishText = []
   }) => {
     if (!context && !title) return;
+    const hasInlineHtml = typeof html === "string" && html.trim().length > 0;
+    if (hasInlineHtml) {
+      return;
+    }
     const htmlText = stripHtmlTags(html || "");
     const englishList = normaliseEnglishTextList(allowedEnglishText);
-    const translationText = typeof translation === "string" ? translation.trim() : "";
     slots.push({
       context,
       stage,
@@ -183,8 +178,7 @@ function collectVisualEvidenceSlots(scenario) {
       description,
       prompt,
       htmlText,
-      allowedEnglishText: englishList,
-      translation: translationText
+      allowedEnglishText: englishList
     });
   };
 
@@ -196,8 +190,7 @@ function collectVisualEvidenceSlots(scenario) {
       description: item.description || "",
       prompt: item.imagePrompt || "",
       html: item.html || "",
-      allowedEnglishText: item.allowedEnglishText,
-      translation: item.translation || ""
+      allowedEnglishText: item.allowedEnglishText
     });
   });
 
@@ -213,8 +206,7 @@ function collectVisualEvidenceSlots(scenario) {
             description: item.description || "",
             prompt: item.imagePrompt || "",
             html: item.html || "",
-            allowedEnglishText: item.allowedEnglishText,
-            translation: item.translation || ""
+            allowedEnglishText: item.allowedEnglishText
           });
         });
       });
@@ -232,24 +224,20 @@ function buildNanobananaPromptPayload(scenario) {
   const slots = collectVisualEvidenceSlots(scenario);
   const summary = scenario?.summary || "";
   const strictTextPolicy = [
-    "No embedded text unless an explicit allowedEnglishText list is provided for that asset.",
-    "When allowedEnglishText exists, render ONLY those exact English phrases (matching case/punctuation) and nothing else.",
-    "Leave clean blank signage/banner areas so Hangul overlays or translations can be added outside the image.",
-    "Absolutely no Hangul or Korean characters may appear inside Nanobanana outputs; translations live in the UI."
+    "Only request Nanobanana assets for clues that can be explained 100% through visuals (blood spatter on fabric, residues on tools, posture in CCTV frames).",
+    "Never paint letters, digits, signage, captions, UI chrome, or speech bubbles—every surface must stay completely text-free.",
+    "If a clue needs wording, timelines, receipts, or chat logs, build them as HTML evidence instead of asking Nanobanana for text."
   ].join(" ");
   const visualClueRule =
-    "Clues must be solvable from visual cues alone (appearance, posture, objects, lighting, environment) without additional narration.";
-  const translationRule =
-    "Korean translations surface only via the UI translation button, so the artwork itself must stay completely free of Hangul characters.";
+    "Clues must be solvable from visual cues alone (appearance, posture, objects, lighting, environment) without any embedded narration.";
   const header =
     `Nanobanana에게 아래 사건의 시각 자산을 제작해 주세요.\n` +
     `\n사건명: ${scenario?.title || "-"}` +
     `\n톤: ${scenario?.tone || "-"}` +
     `\n요약: ${summary}` +
-    `\n문자 인코딩: Hangul 텍스트는 UI HTML 오버레이에서 UTF-8로 주입되며, Nanobanana 이미지는 한글을 절대 포함하지 않습니다.` +
+    `\n문자 정책: 모든 텍스트, 캡션, 타이포그래피, UI 요소는 HTML 증거에서만 처리하며, Nanobanana 이미지는 문자 없이 순수한 시각 단서로만 구성합니다.` +
     `\n텍스트 정책: ${strictTextPolicy}` +
     `\n시각 단서 정책: ${visualClueRule}` +
-    `\n번역 정책: ${translationRule}` +
     `\n요청 자산: ${slots.length}개`;
 
   if (!slots.length) {
@@ -268,25 +256,19 @@ function buildNanobananaPromptPayload(scenario) {
             ? slot.stage
             : "";
       const basePrompt = slot.prompt || slot.description || slot.htmlText || "비어 있음";
-      const noHangulDirective = "Absolutely no Hangul/Korean characters or syllables are allowed anywhere in this asset.";
-      const textDirective = slot.allowedEnglishText?.length
-        ? `Use ONLY these English phrases (exact spelling/case) within the image: ${slot.allowedEnglishText.join(", ")}. ${noHangulDirective}`
-        : `Do not render any text; leave all signage blank. ${noHangulDirective}`;
-      const enforcedPrompt = `${basePrompt} ${textDirective} ${visualClueRule}`;
-      const blankZoneHint = describeBlankOverlayZone(slot);
+      const noTextDirective =
+        "Do not render any text, numerals, signage, UI chrome, stickers, or labels. Keep every surface natural and story-driven.";
+      const enforcedPrompt = `${basePrompt} ${noTextDirective} ${visualClueRule}`;
+      const focusHint = describeVisualFocusHint(slot);
       const lines = [
         `${index + 1}. ${slot.context}${stageLabel ? ` · ${stageLabel}` : ""} - ${slot.title}`,
         `   - 씬 설명: ${slot.description || slot.htmlText || "상세 설명 없음"}`,
         `   - Nanobanana 프롬프트: ${enforcedPrompt}`,
         `   - 텍스트 정책: ${strictTextPolicy}`,
-        `   - 허용된 영어 텍스트: ${slot.allowedEnglishText?.length ? slot.allowedEnglishText.join(", ") : "없음"}`,
-        `   - 번역 정책: ${translationRule}`,
+        `   - 텍스트/간판 삽입: 절대 금지 (모든 문자는 HTML 증거에서만 표현)` ,
         `   - 시각 단서 지시: ${visualClueRule}`,
-        `   - 빈칸 영역 지시: ${blankZoneHint}`
+        `   - 포커스 가이드: ${focusHint}`
       ];
-      if (slot.translation) {
-        lines.push(`   - 한국어 번역(버튼으로 표시): ${slot.translation}`);
-      }
       if (slot.htmlText) {
         lines.push(`   - HTML 레이아웃 참고: ${slot.htmlText}`);
       }
@@ -342,8 +324,7 @@ function normaliseScenario(raw = {}) {
     description: item?.description || "",
     html: item?.html || "",
     imagePrompt: item?.imagePrompt || "",
-    allowedEnglishText: normaliseEnglishTextList(item?.allowedEnglishText),
-    translation: item?.translation || ""
+    allowedEnglishText: normaliseEnglishTextList(item?.allowedEnglishText)
   }));
   clone.characters = ensureArray(clone.characters);
 
