@@ -982,9 +982,8 @@ export const SCENARIO_GENERATION_GUIDE = String.raw`
 
 ### Nanobanana 장면 명세 예시
 
-```
-imagePrompt: "ShotType: over-the-shoulder medium shot from shoulder height, 35mm lens. SubjectFocus: drummer's cracked stick pointing at the fresh blood-specked cymbal dent. KeyObjects & PhysicalTrace: rain-soaked rooftop tiles, fallen setlist page with smudged ink, smeared handprint on the safety railing. Environment & SpatialClues: neon skyline bokeh, puddles reflecting amber corridor light, emergency exit door ajar with yellow hazard stripe. Lighting & Mood: cold midnight drizzle with cyan rim light from stage LEDs, high contrast cinematic noir. Text-free artwork. Leave every signage blank for HTML overlay. Use ultra realistic materials, 4K render."
-```
+imagePrompt 예시:
+"ShotType: over-the-shoulder medium shot from shoulder height, 35mm lens. SubjectFocus: drummer's cracked stick pointing at the fresh blood-specked cymbal dent. KeyObjects & PhysicalTrace: rain-soaked rooftop tiles, fallen setlist page with smudged ink, smeared handprint on the safety railing. Environment & SpatialClues: neon skyline bokeh, puddles reflecting amber corridor light, emergency exit door ajar with yellow hazard stripe. Lighting & Mood: cold midnight drizzle with cyan rim light from stage LEDs, high contrast cinematic noir. Text-free artwork. Leave every signage blank for HTML overlay. Use ultra realistic materials, 4K render."
 
 ### HTML 스타일링 절대 규칙:
 1. **반드시 인라인 스타일 사용** - style 속성에 모든 CSS 포함
