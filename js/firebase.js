@@ -167,12 +167,12 @@ export async function saveScenarioSet(scenario) {
   }
 }
 
-export async function uploadGraphicsBundle(file, scenarioId) {
-  if (!file) {
-    throw new Error("GRAPHICS_FILE_REQUIRED");
-  }
+export async function uploadGraphicsAssets(files = [], scenarioId) {
   if (!scenarioId) {
     throw new Error("SCENARIO_ID_REQUIRED");
+  }
+  if (!Array.isArray(files) || files.length === 0) {
+    throw new Error("GRAPHICS_FILES_REQUIRED");
   }
   const libs = await loadFirebaseStorageModule();
   if (!libs) {
@@ -182,25 +182,30 @@ export async function uploadGraphicsBundle(file, scenarioId) {
   if (!storage) {
     throw new Error("FIREBASE_UNAVAILABLE");
   }
-  const safeName = (file.name || "graphics-bundle.zip").replace(/\s+/g, "-");
-  const path = `graphicsBundles/${scenarioId}/${safeName}`;
-  try {
-    const bundleRef = libs.ref(storage, path);
-    const snapshot = await libs.uploadBytes(bundleRef, file);
-    const url = await libs.getDownloadURL(bundleRef);
-    const size = snapshot?.metadata?.size ?? file.size ?? 0;
-    const contentType = snapshot?.metadata?.contentType ?? file.type ?? "application/octet-stream";
-    return {
-      url,
-      path,
-      bytes: size,
-      contentType,
-      uploadedAt: new Date().toISOString()
-    };
-  } catch (error) {
-    console.error("그래픽 번들 업로드 실패", error);
-    throw error;
+
+  const uploads = [];
+  for (const file of files) {
+    if (!file) continue;
+    const safeName = (file.name || "graphics-asset").replace(/\s+/g, "-");
+    const path = `graphicsAssets/${scenarioId}/${Date.now()}-${safeName}`;
+    try {
+      const assetRef = libs.ref(storage, path);
+      const snapshot = await libs.uploadBytes(assetRef, file);
+      const url = await libs.getDownloadURL(assetRef);
+      uploads.push({
+        url,
+        path,
+        originalName: file.name || safeName,
+        bytes: snapshot?.metadata?.size ?? file.size ?? 0,
+        contentType: snapshot?.metadata?.contentType ?? file.type ?? "application/octet-stream",
+        uploadedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("그래픽 자산 업로드 실패", error);
+      throw error;
+    }
   }
+  return uploads;
 }
 
 // Firebase API functions for sessions, players, chat_messages

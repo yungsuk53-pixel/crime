@@ -5,13 +5,13 @@ import {
   SCENARIO_GENERATION_GUIDE,
   stageLabels
 } from "./data.js";
-import { fetchRemoteScenarios, saveScenarioSet, uploadGraphicsBundle } from "./firebase.js";
+import { fetchRemoteScenarios, saveScenarioSet, uploadGraphicsAssets } from "./firebase.js";
 
 let draftScenario = null;
 let savingScenario = false;
 let nanobananaPromptText = "";
-let graphicsBundleFile = null;
-let graphicsBundleMeta = null;
+let graphicsFiles = [];
+let graphicsAssetsMeta = [];
 let scenarioNeedsGraphics = false;
 
 function renderScenarioCards() {
@@ -351,6 +351,7 @@ function buildNanobananaPromptPayload(scenario) {
     `\n톤: ${scenario?.tone || "-"}` +
     `\n요약: ${summary}` +
     `\n문자 인코딩: All text must remain in UTF-8 Hangul. Keep every Korean label exactly as provided.` +
+    `\n텍스트 정책: Text-free artwork only. Leave clear blank banner/plate areas so Hangul overlays can be added later via HTML.` +
     `\n요청 자산: ${slots.length}개`;
 
   if (!slots.length) {
@@ -584,7 +585,7 @@ function applyScenarioDraft(rawScenario, sourceLabel = "업로드") {
 function buildPromptTemplate() {
   return {
     instructions:
-      "아래 시나리오 구조에 맞춰 고품질 범죄 추리 게임을 만들어주세요. visual 증거는 Nanobanana에 전달할 imagePrompt를 반드시 포함하고, 실제 이미지는 별도 번들로 업로드할 수 있도록 설명만 제공합니다. 모든 이미지 프롬프트에는 'All text must remain in UTF-8 Hangul.' 과 같이 한글 텍스트가 깨지지 않도록 UTF-8 유지 문구를 꼭 추가하세요.",
+      "아래 시나리오 구조에 맞춰 고품질 범죄 추리 게임을 만들어주세요. visual 증거는 Nanobanana에 전달할 imagePrompt를 반드시 포함하고, 실제 이미지는 별도 번들로 업로드할 수 있도록 설명만 제공합니다. 모든 이미지 프롬프트에는 'All text must remain in UTF-8 Hangul.' 과 같이 한글 텍스트가 깨지지 않도록 UTF-8 유지 문구를 꼭 추가하고, **이미지에는 어떤 텍스트도 넣지 말고** \"Text-free artwork, leave blank banner for HTML overlay\" 와 같은 지시를 포함해 주세요.",
     scenario: {
       id: "unique-kebab-case-id",
       title: "매력적이고 기억에 남는 제목",
@@ -674,14 +675,22 @@ function buildPromptTemplate() {
   };
 }
 
+function getTrimmedInputValue(elementId) {
+  const el = document.getElementById(elementId);
+  if (!el || typeof el.value !== "string") {
+    return "";
+  }
+  return el.value.trim();
+}
+
 function buildPromptGuide() {
   // data.js에서 가져온 고품질 프롬프트 가이드 사용
   let guide = SCENARIO_GENERATION_GUIDE;
   
   // 사용자 입력 필드 읽기
-  const userTheme = document.getElementById("userTheme")?.value.trim();
-  const userPlayerCount = document.getElementById("userPlayerCount")?.value.trim();
-  const userRequirements = document.getElementById("userRequirements")?.value.trim();
+  const userTheme = getTrimmedInputValue("userTheme");
+  const userPlayerCount = getTrimmedInputValue("userPlayerCount");
+  const userRequirements = getTrimmedInputValue("userRequirements");
   
   // 사용자 입력이 있으면 프롬프트 앞에 추가
   if (userTheme || userPlayerCount || userRequirements) {
@@ -853,9 +862,9 @@ function applyUserRequirementsToPrompt() {
   if (!guideField) return;
   
   // 사용자 입력 필드 읽기
-  const userTheme = document.getElementById("userTheme")?.value.trim();
-  const userPlayerCount = document.getElementById("userPlayerCount")?.value.trim();
-  const userRequirements = document.getElementById("userRequirements")?.value.trim();
+  const userTheme = getTrimmedInputValue("userTheme");
+  const userPlayerCount = getTrimmedInputValue("userPlayerCount");
+  const userRequirements = getTrimmedInputValue("userRequirements");
   
   // 입력이 없으면 경고
   if (!userTheme && !userPlayerCount && !userRequirements) {
