@@ -17,10 +17,13 @@ function shouldEnableFirebase() {
 
 const FIREBASE_APP_URL = "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 const DATABASE_URL = "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+const STORAGE_URL = "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 let firebaseModulePromise = null;
+let firebaseStorageModulePromise = null;
 let firebaseAppInstance = null;
 let databaseInstance = null;
+let storageInstance = null;
 let firebaseEnabled = shouldEnableFirebase();
 
 async function loadFirebaseModules() {
@@ -76,6 +79,45 @@ async function ensureDatabase() {
   return databaseInstance;
 }
 
+async function loadFirebaseStorageModule() {
+  if (!firebaseEnabled) {
+    return null;
+  }
+  if (!firebaseStorageModulePromise) {
+    firebaseStorageModulePromise = (async () => {
+      try {
+        const storageModule = await import(STORAGE_URL);
+        return {
+          getStorage: storageModule.getStorage,
+          ref: storageModule.ref,
+          uploadBytes: storageModule.uploadBytes,
+          getDownloadURL: storageModule.getDownloadURL
+        };
+      } catch (error) {
+        console.warn("Firebase Storage 모듈 로딩 실패", error);
+        return null;
+      }
+    })();
+  }
+  return firebaseStorageModulePromise;
+}
+
+async function ensureStorage() {
+  const libs = await loadFirebaseStorageModule();
+  if (!libs) return null;
+  if (storageInstance) {
+    return storageInstance;
+  }
+  if (!firebaseAppInstance) {
+    const appLibs = await loadFirebaseModules();
+    if (!appLibs) return null;
+    const { getApps, getApp, initializeApp } = appLibs;
+    firebaseAppInstance = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  }
+  storageInstance = libs.getStorage(firebaseAppInstance);
+  return storageInstance;
+}
+
 export async function fetchRemoteScenarios() {
   if (!firebaseEnabled) {
     return [];
@@ -121,6 +163,42 @@ export async function saveScenarioSet(scenario) {
     return scenario;
   } catch (error) {
     console.error("시나리오 저장 실패", error);
+    throw error;
+  }
+}
+
+export async function uploadGraphicsBundle(file, scenarioId) {
+  if (!file) {
+    throw new Error("GRAPHICS_FILE_REQUIRED");
+  }
+  if (!scenarioId) {
+    throw new Error("SCENARIO_ID_REQUIRED");
+  }
+  const libs = await loadFirebaseStorageModule();
+  if (!libs) {
+    throw new Error("FIREBASE_UNAVAILABLE");
+  }
+  const storage = await ensureStorage();
+  if (!storage) {
+    throw new Error("FIREBASE_UNAVAILABLE");
+  }
+  const safeName = (file.name || "graphics-bundle.zip").replace(/\s+/g, "-");
+  const path = `graphicsBundles/${scenarioId}/${safeName}`;
+  try {
+    const bundleRef = libs.ref(storage, path);
+    const snapshot = await libs.uploadBytes(bundleRef, file);
+    const url = await libs.getDownloadURL(bundleRef);
+    const size = snapshot?.metadata?.size ?? file.size ?? 0;
+    const contentType = snapshot?.metadata?.contentType ?? file.type ?? "application/octet-stream";
+    return {
+      url,
+      path,
+      bytes: size,
+      contentType,
+      uploadedAt: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error("그래픽 번들 업로드 실패", error);
     throw error;
   }
 }

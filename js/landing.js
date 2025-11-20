@@ -1,8 +1,18 @@
-import { scenarios, formatPlayerRange, registerScenarios, SCENARIO_GENERATION_GUIDE } from "./data.js";
-import { fetchRemoteScenarios, saveScenarioSet } from "./firebase.js";
+import {
+  scenarios,
+  formatPlayerRange,
+  registerScenarios,
+  SCENARIO_GENERATION_GUIDE,
+  stageLabels
+} from "./data.js";
+import { fetchRemoteScenarios, saveScenarioSet, uploadGraphicsBundle } from "./firebase.js";
 
 let draftScenario = null;
 let savingScenario = false;
+let nanobananaPromptText = "";
+let graphicsBundleFile = null;
+let graphicsBundleMeta = null;
+let scenarioNeedsGraphics = false;
 
 function renderScenarioCards() {
   const grid = document.getElementById("scenarioGrid");
@@ -47,6 +57,54 @@ function toggleSaveButton(enabled) {
 
 function ensureArray(value) {
   return Array.isArray(value) ? value : [];
+}
+
+const VISUAL_STAGE_KEYS = ["clue_a", "clue_b", "clue_c"];
+
+function normaliseVisualEvidenceCollection(source) {
+  const normaliseItem = (item = {}) => ({
+    type: item?.type || "document",
+    title: item?.title || "",
+    description: item?.description || "",
+    html: item?.html || "",
+    imagePrompt: item?.imagePrompt || ""
+  });
+
+  if (!source) {
+    return {
+      clue_a: [],
+      clue_b: [],
+      clue_c: []
+    };
+  }
+
+  if (Array.isArray(source)) {
+    return {
+      clue_a: source.map(normaliseItem),
+      clue_b: [],
+      clue_c: []
+    };
+  }
+
+  if (typeof source === "object") {
+    return VISUAL_STAGE_KEYS.reduce(
+      (acc, key) => {
+        acc[key] = ensureArray(source[key]).map(normaliseItem);
+        return acc;
+      },
+      {
+        clue_a: [],
+        clue_b: [],
+        clue_c: []
+      }
+    );
+  }
+
+  return {
+    clue_a: [],
+    clue_b: [],
+    clue_c: []
+  };
 }
 
 function normaliseScenario(raw = {}) {
@@ -146,13 +204,7 @@ function normaliseScenario(raw = {}) {
     }));
     copy.suggestedQuestions = ensureArray(copy.suggestedQuestions);
     copy.keyConflicts = ensureArray(copy.keyConflicts);
-    copy.visualEvidence = ensureArray(copy.visualEvidence).map((item) => ({
-      type: item?.type || "document",
-      title: item?.title || "",
-      description: item?.description || "",
-      html: item?.html || "",
-      imagePrompt: item?.imagePrompt || ""
-    }));
+    copy.visualEvidence = normaliseVisualEvidenceCollection(copy.visualEvidence);
     
     return copy;
   };
@@ -241,6 +293,105 @@ function renderTimeline(items = []) {
     .join("")}</ul>`;
 }
 
+function stripHtmlTags(value = "") {
+  if (!value) return "";
+  return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function collectVisualEvidenceSlots(scenario) {
+  const slots = [];
+  const pushSlot = ({ context, stage, title, description, html, prompt }) => {
+    if (!context && !title) return;
+    const htmlText = stripHtmlTags(html || "");
+    slots.push({ context, stage, title, description, prompt, htmlText });
+  };
+
+  ensureArray(scenario?.evidence?.visual).forEach((item, index) => {
+    pushSlot({
+      context: "공용 증거",
+      stage: "global",
+      title: item.title || `공용 시각 증거 ${index + 1}`,
+      description: item.description || "",
+      prompt: item.imagePrompt || "",
+      html: item.html || ""
+    });
+  });
+
+  const collectPersona = (personas = [], roleLabel) => {
+    personas.forEach((persona) => {
+      const visualMap = normaliseVisualEvidenceCollection(persona.visualEvidence);
+      VISUAL_STAGE_KEYS.forEach((stageKey) => {
+        ensureArray(visualMap[stageKey]).forEach((item, idx) => {
+          pushSlot({
+            context: `${persona.name || roleLabel} (${roleLabel})`,
+            stage: stageKey,
+            title: item.title || `${roleLabel} 증거 ${idx + 1}`,
+            description: item.description || "",
+            prompt: item.imagePrompt || "",
+            html: item.html || ""
+          });
+        });
+      });
+    });
+  };
+
+  collectPersona(ensureArray(scenario?.roles?.detective), "탐정");
+  collectPersona(ensureArray(scenario?.roles?.culprit), "범인");
+  collectPersona(ensureArray(scenario?.roles?.suspects), "용의자");
+
+  return slots;
+}
+
+function buildNanobananaPromptPayload(scenario) {
+  const slots = collectVisualEvidenceSlots(scenario);
+  const summary = scenario?.summary || "";
+  const header =
+    `Nanobanana에게 아래 사건의 시각 자산을 제작해 주세요.\n` +
+    `\n사건명: ${scenario?.title || "-"}` +
+    `\n톤: ${scenario?.tone || "-"}` +
+    `\n요약: ${summary}` +
+    `\n요청 자산: ${slots.length}개`;
+
+  if (!slots.length) {
+    return {
+      slots,
+      prompt: `${header}\n\n현재 시나리오에는 Nanobanana 그래픽 자산이 필요하지 않습니다.`
+    };
+  }
+
+  const body = slots
+    .map((slot, index) => {
+      const stageLabel =
+        slot.stage && stageLabels?.[slot.stage]
+          ? stageLabels[slot.stage]
+          : slot.stage && slot.stage !== "global"
+            ? slot.stage
+            : "";
+      const lines = [
+        `${index + 1}. ${slot.context}${stageLabel ? ` · ${stageLabel}` : ""} - ${slot.title}`,
+        `   - 씬 설명: ${slot.description || slot.htmlText || "상세 설명 없음"}`,
+        `   - Nanobanana 프롬프트: ${slot.prompt || slot.description || slot.htmlText || "비어 있음"}`
+      ];
+      if (slot.htmlText) {
+        lines.push(`   - HTML 레이아웃 참고: ${slot.htmlText}`);
+      }
+      return lines.join("\n");
+    })
+    .join("\n\n");
+
+  const footer =
+    "\n출력 규격" +
+    "\n- 3:2 또는 4:3 비율, 2048px 이상 해상도" +
+    "\n- 시나리오 톤을 반영한 색감" +
+    "\n- 투명 배경 필요 시 PNG, 그 외 JPG" +
+    "\n- 모든 산출물은 ZIP 번들로 묶어 전달";
+
+  return {
+    slots,
+    prompt: `${header}\n\n${body}${footer}`
+  };
+}
+
 function displayDraftScenario(draft) {
   const container = document.getElementById("scenarioPreview");
   if (!container) return;
@@ -313,6 +464,81 @@ function displayDraftScenario(draft) {
   toggleSaveButton(true);
 }
 
+function updateGraphicsBundleStatus(message, state = "info") {
+  const statusEl = document.getElementById("graphicsBundleStatus");
+  if (statusEl) {
+    statusEl.textContent = message;
+    statusEl.dataset.state = state;
+  }
+}
+
+function resetGraphicsBundleTracking() {
+  nanobananaPromptText = "";
+  scenarioNeedsGraphics = false;
+  graphicsBundleFile = null;
+  graphicsBundleMeta = null;
+  const promptField = document.getElementById("nanobananaPrompt");
+  if (promptField) {
+    promptField.value = "";
+  }
+  const bundleInput = document.getElementById("graphicsBundleInput");
+  if (bundleInput) {
+    bundleInput.value = "";
+  }
+  updateGraphicsBundleStatus("시나리오가 로드되면 필요한 자산 개수와 업로드 상태가 표시됩니다.", "info");
+}
+
+function refreshNanobananaPromptUI(scenario) {
+  if (!scenario) {
+    resetGraphicsBundleTracking();
+    return;
+  }
+  resetGraphicsBundleTracking();
+  const promptField = document.getElementById("nanobananaPrompt");
+  const existingAssets = scenario.assets || {};
+  graphicsBundleMeta = existingAssets.graphicsBundle || null;
+  const payload = buildNanobananaPromptPayload(scenario);
+  nanobananaPromptText = existingAssets.nanobananaPrompt || payload.prompt;
+  scenarioNeedsGraphics = payload.slots.length > 0;
+  if (promptField) {
+    promptField.value = nanobananaPromptText;
+  }
+  if (!scenarioNeedsGraphics) {
+    updateGraphicsBundleStatus("시각 자료가 없어 그래픽 번들이 필요하지 않습니다.", "info");
+    return;
+  }
+  if (graphicsBundleMeta) {
+    updateGraphicsBundleStatus(
+      `그래픽 번들 연결됨 · ${graphicsBundleMeta.path || graphicsBundleMeta.url || "경로 정보 없음"}`,
+      "success"
+    );
+  } else {
+    updateGraphicsBundleStatus("그래픽 번들을 업로드해야 저장할 수 있습니다.", "warn");
+  }
+}
+
+function formatBytes(size = 0) {
+  if (!Number(size)) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const exponent = Math.min(Math.floor(Math.log(size) / Math.log(1024)), units.length - 1);
+  const value = size / 1024 ** exponent;
+  return `${value.toFixed(1)} ${units[exponent]}`;
+}
+
+function handleGraphicsBundleChange(event) {
+  const file = event.target?.files?.[0] || null;
+  graphicsBundleFile = file;
+  graphicsBundleMeta = null;
+  if (!file) {
+    updateGraphicsBundleStatus("업로드할 파일을 선택해 주세요.", "warn");
+    return;
+  }
+  updateGraphicsBundleStatus(
+    `${file.name} 선택됨 · ${formatBytes(file.size || 0)} · 저장 시 Nanobanana 번들이 업로드됩니다.`,
+    "info"
+  );
+}
+
 function applyScenarioDraft(rawScenario, sourceLabel = "업로드") {
   try {
     console.log("[시나리오 빌더] 원본 데이터:", rawScenario);
@@ -338,23 +564,26 @@ function applyScenarioDraft(rawScenario, sourceLabel = "업로드") {
       setBuilderStatus(validation.message, "warn");
       draftScenario = null;
       displayDraftScenario(null);
+      resetGraphicsBundleTracking();
       return;
     }
     draftScenario = normalised;
     displayDraftScenario(draftScenario);
     setBuilderStatus(`'${draftScenario.title}' 사건 초안을 ${sourceLabel}에서 불러왔습니다.`, "success");
+    refreshNanobananaPromptUI(draftScenario);
   } catch (error) {
     console.error("시나리오 초안 적용 실패:", error);
     setBuilderStatus("JSON을 해석하지 못했습니다. 형식을 다시 확인해 주세요.", "warn");
     draftScenario = null;
     displayDraftScenario(null);
+    resetGraphicsBundleTracking();
   }
 }
 
 function buildPromptTemplate() {
   return {
     instructions:
-      "아래 시나리오 구조에 맞춰 고품질 범죄 추리 게임을 만들어주세요. visual 증거를 포함하여 HTML 코드 또는 이미지 생성 프롬프트를 제공하세요.",
+      "아래 시나리오 구조에 맞춰 고품질 범죄 추리 게임을 만들어주세요. visual 증거는 Nanobanana에 전달할 imagePrompt를 반드시 포함하고, 실제 이미지는 별도 번들로 업로드할 수 있도록 설명만 제공합니다.",
     scenario: {
       id: "unique-kebab-case-id",
       title: "매력적이고 기억에 남는 제목",
@@ -501,6 +730,25 @@ async function copyPromptGuide() {
   }
 }
 
+async function copyNanobananaPrompt() {
+  const promptField = document.getElementById("nanobananaPrompt");
+  if (!promptField || !promptField.value.trim()) {
+    setBuilderStatus("Nanobanana 프롬프트가 생성된 뒤 복사할 수 있습니다.", "warn");
+    return;
+  }
+  try {
+    if (!navigator?.clipboard?.writeText) {
+      throw new Error("clipboard API not available");
+    }
+    await navigator.clipboard.writeText(promptField.value);
+    setBuilderStatus("Nanobanana 그래픽 요청서를 복사했습니다.", "success");
+  } catch (error) {
+    console.warn("Nanobanana 프롬프트 복사 실패", error);
+    setBuilderStatus("클립보드 복사에 실패했습니다. 수동으로 복사해 주세요.", "warn");
+    promptField.select();
+  }
+}
+
 function handlePromptUpload(event) {
   const file = event.target?.files?.[0];
   if (!file) {
@@ -516,6 +764,7 @@ function handlePromptUpload(event) {
       setBuilderStatus("JSON 파일을 읽어오지 못했습니다. 형식을 확인해 주세요.", "warn");
       draftScenario = null;
       displayDraftScenario(null);
+      resetGraphicsBundleTracking();
     }
   };
   reader.readAsText(file, "utf-8");
@@ -579,6 +828,7 @@ function handlePromptJsonParse() {
     );
     draftScenario = null;
     displayDraftScenario(null);
+    resetGraphicsBundleTracking();
   }
 }
 
@@ -590,6 +840,7 @@ function handlePromptJsonClear() {
   displayDraftScenario(null);
   toggleSaveButton(false);
   setBuilderStatus("직접 입력한 JSON을 초기화했습니다.", "info");
+  resetGraphicsBundleTracking();
   const uploadInput = document.getElementById("promptUploadInput");
   if (uploadInput) {
     uploadInput.value = "";
@@ -636,14 +887,38 @@ async function handleSaveScenario() {
     setBuilderStatus(validation.message, "warn");
     return;
   }
+  if (scenarioNeedsGraphics && !graphicsBundleMeta && !graphicsBundleFile) {
+    setBuilderStatus("필수 시각 자산이 있으므로 Nanobanana 번들을 업로드해야 합니다.", "warn");
+    return;
+  }
   savingScenario = true;
   toggleSaveButton(true);
   try {
-    await saveScenarioSet(draftScenario);
-    registerScenarios([draftScenario]);
+    if (scenarioNeedsGraphics && !graphicsBundleMeta && graphicsBundleFile) {
+      setBuilderStatus("그래픽 번들을 업로드하는 중입니다...", "info");
+      graphicsBundleMeta = await uploadGraphicsBundle(graphicsBundleFile, draftScenario.id);
+      updateGraphicsBundleStatus(
+        `업로드 완료 · ${graphicsBundleMeta.path || graphicsBundleMeta.url}`,
+        "success"
+      );
+    }
+
+    const scenarioPayload = {
+      ...draftScenario,
+      assets: {
+        ...(draftScenario.assets || {}),
+        needsGraphics: scenarioNeedsGraphics,
+        nanobananaPrompt: nanobananaPromptText,
+        graphicsBundle: graphicsBundleMeta || null,
+        updatedAt: new Date().toISOString()
+      }
+    };
+
+    await saveScenarioSet(scenarioPayload);
+    registerScenarios([scenarioPayload]);
     renderScenarioCards();
     setBuilderStatus(
-      `'${draftScenario.title}' 사건 세트를 Firebase에 저장했습니다. 호스트 콘솔을 새로고침하면 즉시 사용할 수 있습니다.`,
+      `'${scenarioPayload.title}' 사건 세트를 Firebase에 저장했습니다. 호스트 콘솔을 새로고침하면 즉시 사용할 수 있습니다.`,
       "success"
     );
     draftScenario = null;
@@ -656,6 +931,7 @@ async function handleSaveScenario() {
       jsonInput.value = "";
     }
     displayDraftScenario(null);
+    resetGraphicsBundleTracking();
   } catch (error) {
     if (error?.message === "FIREBASE_UNAVAILABLE") {
       setBuilderStatus("Firebase에 연결할 수 없습니다. 네트워크 상태를 확인하거나 페이지를 HTTPS로 호스팅한 뒤 다시 시도하세요.", "error");
@@ -690,6 +966,8 @@ function setupScenarioBuilder() {
   const parseBtn = document.getElementById("parsePromptJsonBtn");
   const clearBtn = document.getElementById("clearPromptJsonBtn");
   const applyRequirementsBtn = document.getElementById("applyUserRequirements");
+  const copyNanobananaBtn = document.getElementById("copyNanobananaPrompt");
+  const graphicsInput = document.getElementById("graphicsBundleInput");
 
   if (downloadBtn) {
     downloadBtn.addEventListener("click", downloadPromptTemplate);
@@ -715,6 +993,13 @@ function setupScenarioBuilder() {
   if (applyRequirementsBtn) {
     applyRequirementsBtn.addEventListener("click", applyUserRequirementsToPrompt);
   }
+  if (copyNanobananaBtn) {
+    copyNanobananaBtn.addEventListener("click", copyNanobananaPrompt);
+  }
+  if (graphicsInput) {
+    graphicsInput.addEventListener("change", handleGraphicsBundleChange);
+  }
+  resetGraphicsBundleTracking();
   displayDraftScenario(null);
   setBuilderStatus("템플릿을 다운로드하거나 JSON을 붙여넣어 새로운 사건 세트를 등록하세요.");
 }

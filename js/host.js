@@ -891,7 +891,9 @@ async function transitionToStage(stageKey, options = {}) {
   await resetPlayerReadiness(stageKey);
   
   // 토론 단계로 전환 시 봇들이 단서 공유
-  if (stageKey === "discussion") {
+  const isDiscussionStage =
+    typeof stageKey === "string" && stageKey.toLowerCase().includes("discussion");
+  if (isDiscussionStage) {
     setTimeout(() => {
       sendBotClueMessages();
     }, 2000); // 2초 후 봇 메시지 전송
@@ -1364,7 +1366,7 @@ async function handleCreateSession(event) {
       sessionCode
     };
     if (dom.chatStatus) {
-      dom.chatStatus.textContent = `${hostName}님이 호스트로 접속했습니다. 채팅 입력 시 역할이 표시됩니다.`;
+      dom.chatStatus.textContent = `${hostName}님이 호스트로 접속했습니다. 채팅에는 이름만 표시됩니다.`;
     }
 
     loadPlayers();
@@ -1446,7 +1448,7 @@ async function resumeHostSession(sessionCode, hostName, { silent = false } = {})
       sessionCode: session.code
     };
     if (dom.chatStatus) {
-      dom.chatStatus.textContent = `${identity}님이 호스트로 접속했습니다. 채팅 입력 시 역할이 표시됩니다.`;
+      dom.chatStatus.textContent = `${identity}님이 호스트로 접속했습니다. 채팅에는 이름만 표시됩니다.`;
     }
 
     await loadPlayers();
