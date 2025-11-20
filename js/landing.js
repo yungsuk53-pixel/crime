@@ -81,13 +81,28 @@ function describeBlankOverlayZone(slot) {
   return `${base} ${hint}`;
 }
 
+function normaliseEnglishTextList(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((text) => (typeof text === "string" ? text.trim() : ""))
+      .filter(Boolean);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? [trimmed] : [];
+  }
+  return [];
+}
+
 function normaliseVisualEvidenceCollection(source) {
   const normaliseItem = (item = {}) => ({
     type: item?.type || "document",
     title: item?.title || "",
     description: item?.description || "",
     html: item?.html || "",
-    imagePrompt: item?.imagePrompt || ""
+    imagePrompt: item?.imagePrompt || "",
+    allowedEnglishText: normaliseEnglishTextList(item?.allowedEnglishText),
+    translation: item?.translation || ""
   });
 
   if (!source) {
@@ -127,6 +142,150 @@ function normaliseVisualEvidenceCollection(source) {
   };
 }
 
+function collectVisualEvidenceSlots(scenario) {
+  const slots = [];
+  const pushSlot = ({
+    context,
+    stage,
+    title,
+    description,
+    html,
+    prompt,
+    allowedEnglishText = [],
+    translation = ""
+  }) => {
+    if (!context && !title) return;
+    const htmlText = stripHtmlTags(html || "");
+    const englishList = normaliseEnglishTextList(allowedEnglishText);
+    const translationText = typeof translation === "string" ? translation.trim() : "";
+    slots.push({
+      context,
+      stage,
+      title,
+      description,
+      prompt,
+      htmlText,
+      allowedEnglishText: englishList,
+      translation: translationText
+    });
+  };
+
+  ensureArray(scenario?.evidence?.visual).forEach((item, index) => {
+    pushSlot({
+      context: "공용 증거",
+      stage: "global",
+      title: item.title || `공용 시각 증거 ${index + 1}`,
+      description: item.description || "",
+      prompt: item.imagePrompt || "",
+      html: item.html || "",
+      allowedEnglishText: item.allowedEnglishText,
+      translation: item.translation || ""
+    });
+  });
+
+  const collectPersona = (personas = [], roleLabel) => {
+    personas.forEach((persona) => {
+      const visualMap = normaliseVisualEvidenceCollection(persona.visualEvidence);
+      VISUAL_STAGE_KEYS.forEach((stageKey) => {
+        ensureArray(visualMap[stageKey]).forEach((item, idx) => {
+          pushSlot({
+            context: `${persona.name || roleLabel} (${roleLabel})`,
+            stage: stageKey,
+            title: item.title || `${roleLabel} 증거 ${idx + 1}`,
+            description: item.description || "",
+            prompt: item.imagePrompt || "",
+            html: item.html || "",
+            allowedEnglishText: item.allowedEnglishText,
+            translation: item.translation || ""
+          });
+        });
+      });
+    });
+  };
+
+  collectPersona(ensureArray(scenario?.roles?.detective), "탐정");
+  collectPersona(ensureArray(scenario?.roles?.culprit), "범인");
+  collectPersona(ensureArray(scenario?.roles?.suspects), "용의자");
+
+  return slots;
+}
+
+function buildNanobananaPromptPayload(scenario) {
+  const slots = collectVisualEvidenceSlots(scenario);
+  const summary = scenario?.summary || "";
+  const strictTextPolicy = [
+    "No embedded text unless an explicit allowedEnglishText list is provided for that asset.",
+    "When allowedEnglishText exists, render ONLY those exact English phrases (matching case/punctuation) and nothing else.",
+    "Leave clean blank signage/banner areas so Hangul overlays or translations can be added outside the image."
+  ].join(" ");
+  const visualClueRule =
+    "Clues must be solvable from visual cues alone (appearance, posture, objects, lighting, environment) without additional narration.";
+  const translationRule =
+    "Korean translations are shown via the UI translation button; never paint Hangul or extra copy inside the artwork.";
+  const header =
+    `Nanobanana에게 아래 사건의 시각 자산을 제작해 주세요.\n` +
+    `\n사건명: ${scenario?.title || "-"}` +
+    `\n톤: ${scenario?.tone || "-"}` +
+    `\n요약: ${summary}` +
+    `\n문자 인코딩: All text must remain in UTF-8 Hangul. Keep every Korean label exactly as provided.` +
+    `\n텍스트 정책: ${strictTextPolicy}` +
+    `\n시각 단서 정책: ${visualClueRule}` +
+    `\n번역 정책: ${translationRule}` +
+    `\n요청 자산: ${slots.length}개`;
+
+  if (!slots.length) {
+    return {
+      slots,
+      prompt: `${header}\n\n현재 시나리오에는 Nanobanana 그래픽 자산이 필요하지 않습니다.`
+    };
+  }
+
+  const body = slots
+    .map((slot, index) => {
+      const stageLabel =
+        slot.stage && stageLabels?.[slot.stage]
+          ? stageLabels[slot.stage]
+          : slot.stage && slot.stage !== "global"
+            ? slot.stage
+            : "";
+      const basePrompt = slot.prompt || slot.description || slot.htmlText || "비어 있음";
+      const textDirective = slot.allowedEnglishText?.length
+        ? `Use ONLY these English phrases (exact spelling/case) within the image: ${slot.allowedEnglishText.join(", ")}.`
+        : "Do not render any text; leave all signage blank.";
+      const enforcedPrompt = `${basePrompt} ${textDirective} ${visualClueRule}`;
+      const blankZoneHint = describeBlankOverlayZone(slot);
+      const lines = [
+        `${index + 1}. ${slot.context}${stageLabel ? ` · ${stageLabel}` : ""} - ${slot.title}`,
+        `   - 씬 설명: ${slot.description || slot.htmlText || "상세 설명 없음"}`,
+        `   - Nanobanana 프롬프트: ${enforcedPrompt}`,
+        `   - 텍스트 정책: ${strictTextPolicy}`,
+        `   - 허용된 영어 텍스트: ${slot.allowedEnglishText?.length ? slot.allowedEnglishText.join(", ") : "없음"}`,
+        `   - 번역 정책: ${translationRule}`,
+        `   - 시각 단서 지시: ${visualClueRule}`,
+        `   - 빈칸 영역 지시: ${blankZoneHint}`
+      ];
+      if (slot.translation) {
+        lines.push(`   - 한국어 번역(버튼으로 표시): ${slot.translation}`);
+      }
+      if (slot.htmlText) {
+        lines.push(`   - HTML 레이아웃 참고: ${slot.htmlText}`);
+      }
+      return lines.join("\n");
+    })
+    .join("\n\n");
+
+  const footer =
+    "\n출력 규격" +
+    "\n- 3:2 또는 4:3 비율, 2048px 이상 해상도" +
+    "\n- 시나리오 톤을 반영한 색감" +
+    "\n- 투명 배경 필요 시 PNG, 그 외 JPG" +
+    "\n- 각 이미지는 개별 PNG/JPG 파일로 전달 (ZIP 번들 불가)";
+
+  return {
+    slots,
+    prompt: `${header}\n\n${body}${footer}`
+  };
+}
 function normaliseScenario(raw = {}) {
   const clone = JSON.parse(JSON.stringify(raw));
   clone.motifs = ensureArray(clone.motifs);
@@ -162,62 +321,57 @@ function normaliseScenario(raw = {}) {
     title: item?.title || "",
     description: item?.description || "",
     html: item?.html || "",
-    imagePrompt: item?.imagePrompt || ""
+    imagePrompt: item?.imagePrompt || "",
+    allowedEnglishText: normaliseEnglishTextList(item?.allowedEnglishText),
+    translation: item?.translation || ""
   }));
   clone.characters = ensureArray(clone.characters);
-  
-  // roles 구조 정규화 - 다양한 형식 지원
+
   clone.roles = clone.roles || {};
-  
-  // 배열 형식의 roles를 객체 형식으로 변환 (AI가 배열로 생성할 경우)
   if (Array.isArray(clone.roles)) {
     const rolesObj = { detective: [], culprit: [], suspects: [] };
-    clone.roles.forEach(role => {
-      const type = role.clues?.type || role.type || 'suspect';
-      if (type === 'detective') rolesObj.detective.push(role);
-      else if (type === 'culprit') rolesObj.culprit.push(role);
+    clone.roles.forEach((role) => {
+      const type = role?.clues?.type || role?.type || "suspect";
+      if (type === "detective") rolesObj.detective.push(role);
+      else if (type === "culprit") rolesObj.culprit.push(role);
       else rolesObj.suspects.push(role);
     });
     clone.roles = rolesObj;
   }
-  
-  // clues 구조를 가진 새로운 형식 지원
+
   const normalisePersona = (persona = {}) => {
     const copy = { ...persona };
-    
-    // clues.rounds 형식을 기존 형식으로 변환
+
     if (copy.clues && copy.clues.rounds && Array.isArray(copy.clues.rounds)) {
       const allTruths = [];
       const allMisdirections = [];
       const allPrompts = [];
       const allExposed = [];
-      
-      copy.clues.rounds.forEach(round => {
+
+      copy.clues.rounds.forEach((round) => {
         if (round.truths) allTruths.push(...ensureArray(round.truths));
         if (round.misdirections) allMisdirections.push(...ensureArray(round.misdirections));
         if (round.prompts) allPrompts.push(...ensureArray(round.prompts));
         if (round.exposed) allExposed.push(...ensureArray(round.exposed));
       });
-      
+
       if (!copy.truths || !copy.truths.length) copy.truths = allTruths;
       if (!copy.misdirections || !copy.misdirections.length) copy.misdirections = allMisdirections;
       if (!copy.prompts || !copy.prompts.length) copy.prompts = allPrompts;
       if (allExposed.length && (!copy.exposed || !copy.exposed.length)) copy.exposed = allExposed;
-      
-      // briefing이 없으면 clues.objective 사용
+
       if (!copy.briefing && copy.clues.objective) {
         copy.briefing = copy.clues.objective;
       }
     }
-    
+
     copy.truths = ensureArray(copy.truths);
     copy.misdirections = ensureArray(copy.misdirections);
     copy.prompts = ensureArray(copy.prompts);
-    if (copy.exposed !== undefined || copy.clues?.type === 'culprit') {
+    if (copy.exposed !== undefined || copy.clues?.type === "culprit") {
       copy.exposed = ensureArray(copy.exposed);
     }
-    
-    // 새로운 개인별 필드 정규화
+
     copy.timeline = ensureArray(copy.timeline).map((item) => ({
       time: item?.time ?? "",
       action: item?.action ?? ""
@@ -225,10 +379,10 @@ function normaliseScenario(raw = {}) {
     copy.suggestedQuestions = ensureArray(copy.suggestedQuestions);
     copy.keyConflicts = ensureArray(copy.keyConflicts);
     copy.visualEvidence = normaliseVisualEvidenceCollection(copy.visualEvidence);
-    
+
     return copy;
   };
-  
+
   clone.roles.detective = ensureArray(clone.roles.detective).map(normalisePersona);
   clone.roles.culprit = ensureArray(clone.roles.culprit).map((persona) => {
     const copy = normalisePersona(persona);
@@ -316,116 +470,6 @@ function renderTimeline(items = []) {
 function stripHtmlTags(value = "") {
   if (!value) return "";
   return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function collectVisualEvidenceSlots(scenario) {
-  const slots = [];
-  const pushSlot = ({ context, stage, title, description, html, prompt }) => {
-    if (!context && !title) return;
-    const htmlText = stripHtmlTags(html || "");
-    slots.push({ context, stage, title, description, prompt, htmlText });
-  };
-
-  ensureArray(scenario?.evidence?.visual).forEach((item, index) => {
-    pushSlot({
-      context: "공용 증거",
-      stage: "global",
-      title: item.title || `공용 시각 증거 ${index + 1}`,
-      description: item.description || "",
-      prompt: item.imagePrompt || "",
-      html: item.html || ""
-    });
-  });
-
-  const collectPersona = (personas = [], roleLabel) => {
-    personas.forEach((persona) => {
-      const visualMap = normaliseVisualEvidenceCollection(persona.visualEvidence);
-      VISUAL_STAGE_KEYS.forEach((stageKey) => {
-        ensureArray(visualMap[stageKey]).forEach((item, idx) => {
-          pushSlot({
-            context: `${persona.name || roleLabel} (${roleLabel})`,
-            stage: stageKey,
-            title: item.title || `${roleLabel} 증거 ${idx + 1}`,
-            description: item.description || "",
-            prompt: item.imagePrompt || "",
-            html: item.html || ""
-          });
-        });
-      });
-    });
-  };
-
-  collectPersona(ensureArray(scenario?.roles?.detective), "탐정");
-  collectPersona(ensureArray(scenario?.roles?.culprit), "범인");
-  collectPersona(ensureArray(scenario?.roles?.suspects), "용의자");
-
-  return slots;
-}
-
-function buildNanobananaPromptPayload(scenario) {
-  const slots = collectVisualEvidenceSlots(scenario);
-  const summary = scenario?.summary || "";
-  const strictTextFreeRules = [
-    "Absolutely no embedded text, glyphs, numbers, Korean, English, or symbols anywhere in the artwork.",
-    "Leave clean blank signage/banner areas for later Hangul HTML overlays.",
-    "Reserve all Korean labels for HTML only; keep the image itself 100% character-free even if the prompt lists Hangul."
-  ].join(" ");
-  const visualClueRule =
-    "Clues must be solvable from visual cues alone (appearance, posture, objects, lighting, environment) without any written language.";
-  const header =
-    `Nanobanana에게 아래 사건의 시각 자산을 제작해 주세요.\n` +
-    `\n사건명: ${scenario?.title || "-"}` +
-    `\n톤: ${scenario?.tone || "-"}` +
-    `\n요약: ${summary}` +
-    `\n문자 인코딩: All text must remain in UTF-8 Hangul. Keep every Korean label exactly as provided.` +
-    `\n텍스트 정책: Text-free artwork only. Leave clear blank banner/plate areas so Hangul overlays can be added later via HTML.` +
-    `\n시각 단서 정책: ${visualClueRule}` +
-    `\n요청 자산: ${slots.length}개`;
-
-  if (!slots.length) {
-    return {
-      slots,
-      prompt: `${header}\n\n현재 시나리오에는 Nanobanana 그래픽 자산이 필요하지 않습니다.`
-    };
-  }
-
-  const body = slots
-    .map((slot, index) => {
-      const stageLabel =
-        slot.stage && stageLabels?.[slot.stage]
-          ? stageLabels[slot.stage]
-          : slot.stage && slot.stage !== "global"
-            ? slot.stage
-            : "";
-      const basePrompt = slot.prompt || slot.description || slot.htmlText || "비어 있음";
-      const enforcedPrompt = `${basePrompt} (${strictTextFreeRules})`;
-      const blankZoneHint = describeBlankOverlayZone(slot);
-      const lines = [
-        `${index + 1}. ${slot.context}${stageLabel ? ` · ${stageLabel}` : ""} - ${slot.title}`,
-        `   - 씬 설명: ${slot.description || slot.htmlText || "상세 설명 없음"}`,
-        `   - Nanobanana 프롬프트: ${enforcedPrompt}`,
-        `   - 텍스트 금지 규칙: ${strictTextFreeRules}`,
-        `   - 시각 단서 지시: ${visualClueRule}`,
-        `   - 빈칸 영역 지시: ${blankZoneHint}`
-      ];
-      if (slot.htmlText) {
-        lines.push(`   - HTML 레이아웃 참고: ${slot.htmlText}`);
-      }
-      return lines.join("\n");
-    })
-    .join("\n\n");
-
-  const footer =
-    "\n출력 규격" +
-    "\n- 3:2 또는 4:3 비율, 2048px 이상 해상도" +
-    "\n- 시나리오 톤을 반영한 색감" +
-    "\n- 투명 배경 필요 시 PNG, 그 외 JPG" +
-    "\n- 각 이미지는 개별 PNG/JPG 파일로 전달 (ZIP 번들 불가)";
-
-  return {
-    slots,
-    prompt: `${header}\n\n${body}${footer}`
-  };
 }
 
 function displayDraftScenario(draft) {
