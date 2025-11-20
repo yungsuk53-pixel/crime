@@ -88,19 +88,19 @@
                         </div>
 
                         <div class="card card--nested" style="background: #eef6ff; padding: 15px; margin-top: 20px; border-radius: 8px;">
-                            <h4 style="margin: 0 0 10px 0; font-size: 14px; font-weight: 600;">Nanobanana 그래픽 패키지</h4>
+                            <h4 style="margin: 0 0 10px 0; font-size: 14px; font-weight: 600;">Nanobanana 시각 자산</h4>
                             <p class="helper-text" style="margin-bottom: 10px; font-size: 12px;">
-                                시나리오의 모든 시각 자료는 Nanobanana에 별도 프롬프트로 의뢰하고, 생성된 이미지는 ZIP 등 번들 파일로 업로드해야 합니다.
+                                시나리오의 모든 시각 자료는 Nanobanana에 별도 프롬프트로 의뢰하고, 생성된 이미지는 ZIP이 아닌 개별 PNG/JPG 파일로 업로드하세요.
                             </p>
                             <textarea id="nanobananaPrompt" class="field__textarea" rows="6" readonly placeholder="시나리오를 불러오면 Nanobanana 요청서가 자동으로 생성됩니다."></textarea>
                             <div class="builder-actions" style="margin: 10px 0 15px 0;">
                                 <button type="button" class="btn btn--ghost" id="copyNanobananaPrompt">Nanobanana 프롬프트 복사</button>
                             </div>
                             <label class="field">
-                                <span class="field__label">그래픽 번들 업로드 (ZIP)</span>
-                                <input type="file" id="graphicsBundleInput" accept=".zip,.rar,.7z,.tar">
+                                <span class="field__label">Nanobanana 이미지 업로드 (다중 선택 가능)</span>
+                                <input type="file" id="graphicsBundleInput" multiple accept="image/png,image/jpeg,image/jpg,image/webp,image/gif,application/pdf">
                             </label>
-                            <p class="helper-text" id="graphicsBundleStatus">시나리오가 로드되면 필요한 자산 개수와 업로드 상태가 표시됩니다.</p>
+                            <p class="helper-text" id="graphicsBundleStatus">시나리오가 로드되면 필요한 Nanobanana 자산 개수와 업로드 상태가 표시됩니다.</p>
                         </div>
                     </article>
                     <article class="card card--stacked">

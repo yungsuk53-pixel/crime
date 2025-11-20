@@ -386,7 +386,7 @@ function buildNanobananaPromptPayload(scenario) {
     "\n- 3:2 또는 4:3 비율, 2048px 이상 해상도" +
     "\n- 시나리오 톤을 반영한 색감" +
     "\n- 투명 배경 필요 시 PNG, 그 외 JPG" +
-    "\n- 모든 산출물은 ZIP 번들로 묶어 전달";
+    "\n- 각 이미지는 개별 PNG/JPG 파일로 전달 (ZIP 번들 불가)";
 
   return {
     slots,
@@ -474,11 +474,51 @@ function updateGraphicsBundleStatus(message, state = "info") {
   }
 }
 
+function summariseGraphicsAssets(metaList = [], limit = 3) {
+  if (!metaList.length) {
+    return "";
+  }
+  const names = metaList
+    .slice(0, limit)
+    .map((asset) => asset?.originalName || asset?.path || asset?.url || "이미지 파일");
+  const remainder = metaList.length > limit ? ` 외 ${metaList.length - limit}건` : "";
+  return `${names.join(", ")}${remainder}`;
+}
+
+function refreshGraphicsUploadStatus() {
+  if (!scenarioNeedsGraphics) {
+    updateGraphicsBundleStatus("시각 자료가 없어 Nanobanana 이미지가 필요하지 않습니다.", "info");
+    return;
+  }
+
+  if (graphicsAssetsMeta.length) {
+    updateGraphicsBundleStatus(
+      `Nanobanana 이미지 ${graphicsAssetsMeta.length}개 연결됨 · ${summariseGraphicsAssets(graphicsAssetsMeta)}`,
+      "success"
+    );
+    return;
+  }
+
+  if (graphicsFiles.length) {
+    const totalBytes = graphicsFiles.reduce((sum, file) => sum + (file?.size || 0), 0);
+    updateGraphicsBundleStatus(
+      `업로드 대기 중: ${graphicsFiles.length}개 · 총 ${formatBytes(totalBytes)} · 저장 시 자동 업로드됩니다.`,
+      "info"
+    );
+    return;
+  }
+
+  updateGraphicsBundleStatus(
+    "필수 시각 자산이 있습니다. Nanobanana 이미지 파일(PNG/JPG)을 모두 선택해 업로드해 주세요.",
+    "warn"
+  );
+}
+
 function resetGraphicsBundleTracking() {
   nanobananaPromptText = "";
   scenarioNeedsGraphics = false;
-  graphicsBundleFile = null;
-  graphicsBundleMeta = null;
+  graphicsFiles = [];
+  graphicsAssetsMeta = [];
   const promptField = document.getElementById("nanobananaPrompt");
   if (promptField) {
     promptField.value = "";
@@ -487,7 +527,7 @@ function resetGraphicsBundleTracking() {
   if (bundleInput) {
     bundleInput.value = "";
   }
-  updateGraphicsBundleStatus("시나리오가 로드되면 필요한 자산 개수와 업로드 상태가 표시됩니다.", "info");
+  updateGraphicsBundleStatus("시나리오가 로드되면 필요한 Nanobanana 이미지와 업로드 상태가 표시됩니다.", "info");
 }
 
 function refreshNanobananaPromptUI(scenario) {
@@ -495,28 +535,22 @@ function refreshNanobananaPromptUI(scenario) {
     resetGraphicsBundleTracking();
     return;
   }
+
   resetGraphicsBundleTracking();
   const promptField = document.getElementById("nanobananaPrompt");
   const existingAssets = scenario.assets || {};
-  graphicsBundleMeta = existingAssets.graphicsBundle || null;
+  const legacyBundle = existingAssets.graphicsBundle ? [existingAssets.graphicsBundle] : [];
+  const assetList = ensureArray(existingAssets.graphicsAssets);
+  graphicsAssetsMeta = assetList.length ? assetList : legacyBundle;
+
   const payload = buildNanobananaPromptPayload(scenario);
   nanobananaPromptText = existingAssets.nanobananaPrompt || payload.prompt;
   scenarioNeedsGraphics = payload.slots.length > 0;
   if (promptField) {
     promptField.value = nanobananaPromptText;
   }
-  if (!scenarioNeedsGraphics) {
-    updateGraphicsBundleStatus("시각 자료가 없어 그래픽 번들이 필요하지 않습니다.", "info");
-    return;
-  }
-  if (graphicsBundleMeta) {
-    updateGraphicsBundleStatus(
-      `그래픽 번들 연결됨 · ${graphicsBundleMeta.path || graphicsBundleMeta.url || "경로 정보 없음"}`,
-      "success"
-    );
-  } else {
-    updateGraphicsBundleStatus("그래픽 번들을 업로드해야 저장할 수 있습니다.", "warn");
-  }
+
+  refreshGraphicsUploadStatus();
 }
 
 function formatBytes(size = 0) {
@@ -527,18 +561,17 @@ function formatBytes(size = 0) {
   return `${value.toFixed(1)} ${units[exponent]}`;
 }
 
-function handleGraphicsBundleChange(event) {
-  const file = event.target?.files?.[0] || null;
-  graphicsBundleFile = file;
-  graphicsBundleMeta = null;
-  if (!file) {
-    updateGraphicsBundleStatus("업로드할 파일을 선택해 주세요.", "warn");
+function handleGraphicsFilesChange(event) {
+  const files = Array.from(event.target?.files || []);
+  graphicsFiles = files;
+  if (files.length) {
+    graphicsAssetsMeta = [];
+  }
+  if (!files.length) {
+    refreshGraphicsUploadStatus();
     return;
   }
-  updateGraphicsBundleStatus(
-    `${file.name} 선택됨 · ${formatBytes(file.size || 0)} · 저장 시 Nanobanana 번들이 업로드됩니다.`,
-    "info"
-  );
+  refreshGraphicsUploadStatus();
 }
 
 function applyScenarioDraft(rawScenario, sourceLabel = "업로드") {
@@ -585,7 +618,7 @@ function applyScenarioDraft(rawScenario, sourceLabel = "업로드") {
 function buildPromptTemplate() {
   return {
     instructions:
-      "아래 시나리오 구조에 맞춰 고품질 범죄 추리 게임을 만들어주세요. visual 증거는 Nanobanana에 전달할 imagePrompt를 반드시 포함하고, 실제 이미지는 별도 번들로 업로드할 수 있도록 설명만 제공합니다. 모든 이미지 프롬프트에는 'All text must remain in UTF-8 Hangul.' 과 같이 한글 텍스트가 깨지지 않도록 UTF-8 유지 문구를 꼭 추가하고, **이미지에는 어떤 텍스트도 넣지 말고** \"Text-free artwork, leave blank banner for HTML overlay\" 와 같은 지시를 포함해 주세요.",
+      "아래 시나리오 구조에 맞춰 고품질 범죄 추리 게임을 만들어주세요. visual 증거는 Nanobanana에 전달할 imagePrompt를 반드시 포함하고, 실제 이미지는 Nanobanana가 생성한 개별 파일(PNG/JPG 등)로 업로드할 수 있도록 설명만 제공합니다. 모든 이미지 프롬프트에는 'All text must remain in UTF-8 Hangul.' 과 같이 한글 텍스트가 깨지지 않도록 UTF-8 유지 문구를 꼭 추가하고, **이미지에는 어떤 텍스트도 넣지 말고** \"Text-free artwork, leave blank banner for HTML overlay\" 와 같은 지시를 포함해 주세요.",
     scenario: {
       id: "unique-kebab-case-id",
       title: "매력적이고 기억에 남는 제목",
@@ -897,20 +930,21 @@ async function handleSaveScenario() {
     setBuilderStatus(validation.message, "warn");
     return;
   }
-  if (scenarioNeedsGraphics && !graphicsBundleMeta && !graphicsBundleFile) {
-    setBuilderStatus("필수 시각 자산이 있으므로 Nanobanana 번들을 업로드해야 합니다.", "warn");
+  const hasUploadedAssets = graphicsAssetsMeta.length > 0;
+  const hasPendingFiles = graphicsFiles.length > 0;
+
+  if (scenarioNeedsGraphics && !hasUploadedAssets && !hasPendingFiles) {
+    setBuilderStatus("필수 시각 자산이 있으므로 Nanobanana 이미지 파일을 업로드해야 합니다.", "warn");
     return;
   }
   savingScenario = true;
   toggleSaveButton(true);
   try {
-    if (scenarioNeedsGraphics && !graphicsBundleMeta && graphicsBundleFile) {
-      setBuilderStatus("그래픽 번들을 업로드하는 중입니다...", "info");
-      graphicsBundleMeta = await uploadGraphicsBundle(graphicsBundleFile, draftScenario.id);
-      updateGraphicsBundleStatus(
-        `업로드 완료 · ${graphicsBundleMeta.path || graphicsBundleMeta.url}`,
-        "success"
-      );
+    if (scenarioNeedsGraphics && hasPendingFiles) {
+      setBuilderStatus("Nanobanana 이미지를 업로드하는 중입니다...", "info");
+      graphicsAssetsMeta = await uploadGraphicsAssets(graphicsFiles, draftScenario.id);
+      graphicsFiles = [];
+      refreshGraphicsUploadStatus();
     }
 
     const scenarioPayload = {
@@ -919,7 +953,8 @@ async function handleSaveScenario() {
         ...(draftScenario.assets || {}),
         needsGraphics: scenarioNeedsGraphics,
         nanobananaPrompt: nanobananaPromptText,
-        graphicsBundle: graphicsBundleMeta || null,
+        graphicsAssets: graphicsAssetsMeta,
+        graphicsBundle: null,
         updatedAt: new Date().toISOString()
       }
     };
@@ -1007,7 +1042,7 @@ function setupScenarioBuilder() {
     copyNanobananaBtn.addEventListener("click", copyNanobananaPrompt);
   }
   if (graphicsInput) {
-    graphicsInput.addEventListener("change", handleGraphicsBundleChange);
+    graphicsInput.addEventListener("change", handleGraphicsFilesChange);
   }
   resetGraphicsBundleTracking();
   displayDraftScenario(null);

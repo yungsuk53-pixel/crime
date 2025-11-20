@@ -965,7 +965,7 @@ export const SCENARIO_GENERATION_GUIDE = `
 ## 🖼 Nanobanana 그래픽 의뢰 지침
 
 - 각 시각적 증거의 \`imagePrompt\`는 **Nanobanana**에 전달할 세부 묘사 전용으로 작성합니다.
-- 실제 그래픽은 Nanobanana로 생성한 뒤 별도 번들(예: ZIP)로 업로드하며, JSON에는 경로나 참조만 남깁니다.
+- 실제 그래픽은 Nanobanana로 생성한 뒤 개별 이미지 파일(PNG/JPG 등)로 업로드하며, JSON에는 경로나 참조만 남깁니다.
 - HTML 블록에는 레이아웃과 복기용 텍스트만 포함하고, 실물 이미지는 Nanobanana 출력물을 삽입해 사용합니다.
 - 같은 자산을 재사용할 경우에도 \`imagePrompt\`를 명시하여 Nanobanana에 동일한 결과를 재요청할 수 있도록 합니다.
 - **중요**: 한글 텍스트가 포함된 이미지는 반드시 \`All text must remain in UTF-8 Hangul.\` 과 같이 UTF-8 유지 문구를 프롬프트에 추가하고, 필요한 한글 표기를 그대로 기재해 주세요.
