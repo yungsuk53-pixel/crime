@@ -2177,9 +2177,7 @@ function renderPlayers(players = []) {
       return a.name.localeCompare(b.name, "ko-KR");
     })
     .forEach((player) => {
-      const roleDisplay = player.character 
-        ? `${player.character} (${player.name})`
-        : "미배정";
+      const roleDisplay = player.character || "미배정";
       
       const row = document.createElement("tr");
       row.innerHTML = `
@@ -2497,9 +2495,6 @@ function renderHostRoleView(player) {
   const cluePackage = parseCluePackage(player.clue_summary);
   const header = document.createElement("div");
   header.className = "role-view__header";
-  const badge = document.createElement("span");
-  badge.className = getRoleBadgeClass(player.role);
-  badge.textContent = player.role || "미배정";
   const title = document.createElement("p");
   title.className = "role-view__title";
   const personaName = cluePackage?.persona?.name ? `${cluePackage.persona.name} · ${cluePackage.persona.title || ""}`.trim() : player.character;
@@ -2507,7 +2502,7 @@ function renderHostRoleView(player) {
   const subtitle = document.createElement("p");
   subtitle.className = "role-view__subtitle";
   subtitle.textContent = `${player.name}${player.is_host ? " (호스트)" : ""}`;
-  header.append(badge, title, subtitle);
+  header.append(title, subtitle);
   container.appendChild(header);
 
   const briefingBlock = document.createElement("div");
@@ -3036,8 +3031,8 @@ function renderChatMessages(messages = []) {
       hour: "2-digit",
       minute: "2-digit"
     });
-    // 배역 이름만 표시 (역할 표시 제거)
-    meta.innerHTML = `<span>${msg.role || msg.player_name}</span><span>${timeText}</span>`;
+    // 플레이어 이름만 표시 (역할 정보 제거)
+    meta.innerHTML = `<span>${msg.player_name}</span><span>${timeText}</span>`;
 
     const text = document.createElement("p");
     text.className = "chat-message__text";

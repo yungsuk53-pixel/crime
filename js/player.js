@@ -1086,7 +1086,6 @@ function renderLobbyStatus(session, player) {
   }
   const stageLabel = stageLabels[session.stage] || session.stage || "-";
   const statusText = formatStatusText(session.status);
-  const roleText = player?.role || "미배정";
   const deadline = session.stage_deadline_at;
 
   dom.lobbyStatus.innerHTML = `
@@ -1097,7 +1096,6 @@ function renderLobbyStatus(session, player) {
       <span class="lobby-status__label">잔여 시간</span>
       <span class="lobby-status__value" id="playerCountdownValue">${deadline ? "--:--" : "수동 진행"}</span>
     </div>
-    <div class="lobby-status__row"><span class="lobby-status__label">내 역할</span><span class="lobby-status__value">${roleText}</span></div>
     <p class="lobby-status__hint">${buildStageHint(session)}</p>
   `;
 
@@ -1652,7 +1650,7 @@ function populateVoteOptions() {
     .forEach((player) => {
       const option = document.createElement("option");
       option.value = player.id;
-      option.textContent = player.role ? `${player.name} (${player.role})` : player.name;
+      option.textContent = player.name;
       dom.voteTarget.appendChild(option);
     });
   if (existingValue) {
@@ -1813,10 +1811,9 @@ function renderChatMessages(messages = []) {
       minute: "2-digit"
     });
     
-    // 역할(탐정/범인/용의자)과 캐릭터 이름 모두 표시
-    const displayName = msg.role || msg.player_name;
-    const roleBadge = msg.role_type ? `<span class="chat-role-badge chat-role-badge--${msg.role_type}">${msg.role_type}</span>` : '';
-    meta.innerHTML = `<span>${roleBadge}${displayName}</span><span>${timeText}</span>`;
+    // 플레이어 이름만 표시 (역할 정보 제거)
+    const displayName = msg.player_name;
+    meta.innerHTML = `<span>${displayName}</span><span>${timeText}</span>`;
 
     const text = document.createElement("p");
     text.className = "chat-message__text";
@@ -1837,19 +1834,10 @@ async function handleChatSubmit(event) {
   const message = dom.chatMessage.value.trim();
   if (!message) return;
   try {
-    // role_type 결정 (탐정/범인/용의자)
-    let roleType = null;
-    if (state.player && state.player.role) {
-      if (state.player.role === "탐정") roleType = "detective";
-      else if (state.player.role === "범인") roleType = "culprit";
-      else if (state.player.role.includes("용의자")) roleType = "suspect";
-    }
-    
     await api.create("chat_messages", {
       session_code: state.chatIdentity.sessionCode,
       player_name: state.chatIdentity.name,
       role: state.chatIdentity.role,
-      role_type: roleType,
       message,
       sent_at: new Date().toISOString()
     });
