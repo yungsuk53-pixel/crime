@@ -87,10 +87,61 @@ const VISUAL_FOCUS_HINTS = {
   default: "Compose the scene so viewers infer the story purely from objects, lighting, and character poses—never from text."
 };
 
+const ROLE_GROUP_CONFIG = [
+  { key: "detective", label: "탐정 역할군" },
+  { key: "culprit", label: "범인 역할군" },
+  { key: "suspects", label: "용의자 역할군" }
+];
+
 function describeVisualFocusHint(slot) {
   const base = "Focus purely on physical cues—no captions, signage, interface chrome, or lettering of any kind.";
   const hint = VISUAL_FOCUS_HINTS[slot?.stage] || VISUAL_FOCUS_HINTS.default;
   return `${base} ${hint}`;
+}
+
+function listRoleGroupNames(scenario, key) {
+  return ensureArray(scenario?.roles?.[key])
+    .map((persona) => persona?.name)
+    .filter((name) => typeof name === "string" && name.trim().length);
+}
+
+function describeRoleGroupAssetNeeds(scenario, perRoleCount) {
+  if (!Number.isFinite(perRoleCount) || perRoleCount <= 0) {
+    return "";
+  }
+  return ROLE_GROUP_CONFIG.map((group) => {
+    const names = listRoleGroupNames(scenario, group.key);
+    const nameSuffix = names.length ? ` (캐릭터: ${names.join(", ")})` : "";
+    return `- ${group.label}${nameSuffix}: Nanobanana 이미지 ${perRoleCount}개. clue_a/b/c 단계에 골고루 배치하고 HTML 텍스트는 별도 증거에만 작성하세요.`;
+  }).join("\n");
+}
+
+function buildNanobananaOverrideNote(scenario, perRoleCount, slotCount) {
+  if (perRoleCount === null || perRoleCount === undefined) {
+    return "";
+  }
+  if (perRoleCount <= 0) {
+    return [
+      "[사용자 지정 Nanobanana 요구]",
+      "- Nanobanana 이미지는 이번 사건에서 별도로 제작하지 마세요.",
+      "- 모든 시각 단서는 HTML 증거나 텍스트 기반 자료로만 제공합니다."
+    ].join("\n");
+  }
+  const total = perRoleCount * ROLE_GROUP_CONFIG.length;
+  const shortage = Math.max(0, total - slotCount);
+  const roleLines = describeRoleGroupAssetNeeds(scenario, perRoleCount);
+  const note = [
+    "[사용자 지정 Nanobanana 요구]",
+    `- 탐정·범인·용의자 역할군마다 최소 ${perRoleCount}개씩, 총 ${total}개 이상의 Nanobanana 이미지를 발주하세요.`,
+    "- 모든 이미지는 clue_a/b/c 단계에 분산해 공개하고, 텍스트/캡션은 HTML 증거에만 남겨 두세요."
+  ];
+  if (shortage > 0) {
+    note.push(`- 현재 JSON에는 Nanobanana 증거가 ${slotCount}개뿐이라 ${shortage}개를 추가 설계해야 합니다.`);
+  }
+  if (roleLines) {
+    note.push(roleLines);
+  }
+  return note.join("\n");
 }
 
 function normaliseEnglishTextList(value) {
@@ -220,9 +271,22 @@ function collectVisualEvidenceSlots(scenario) {
   return slots;
 }
 
-function buildNanobananaPromptPayload(scenario) {
+function buildNanobananaPromptPayload(scenario, perRoleTarget = null) {
   const slots = collectVisualEvidenceSlots(scenario);
   const summary = scenario?.summary || "";
+  const normalisedPerRole = Number.isFinite(perRoleTarget)
+    ? Math.max(0, Math.min(Math.trunc(perRoleTarget), 5))
+    : null;
+  const preferredTotal =
+    normalisedPerRole !== null ? normalisedPerRole * ROLE_GROUP_CONFIG.length : null;
+  let requestedAssetCount = slots.length;
+  if (normalisedPerRole !== null) {
+    if (normalisedPerRole === 0) {
+      requestedAssetCount = 0;
+    } else if (preferredTotal > slots.length) {
+      requestedAssetCount = preferredTotal;
+    }
+  }
   const strictTextPolicy = [
     "Only request Nanobanana assets for clues that can be explained 100% through visuals (blood spatter on fabric, residues on tools, posture in CCTV frames).",
     "Never paint letters, digits, signage, captions, UI chrome, or speech bubbles—every surface must stay completely text-free.",
@@ -238,9 +302,12 @@ function buildNanobananaPromptPayload(scenario) {
     `\n문자 정책: 모든 텍스트, 캡션, 타이포그래피, UI 요소는 HTML 증거에서만 처리하며, Nanobanana 이미지는 문자 없이 순수한 시각 단서로만 구성합니다.` +
     `\n텍스트 정책: ${strictTextPolicy}` +
     `\n시각 단서 정책: ${visualClueRule}` +
-    `\n요청 자산: ${slots.length}개`;
+    `\n요청 자산: ${requestedAssetCount}개` +
+    (normalisedPerRole && normalisedPerRole > 0
+      ? ` (역할군당 ${normalisedPerRole}개 기준)`
+      : "");
 
-  if (!slots.length) {
+  if (!slots.length && (!normalisedPerRole || normalisedPerRole <= 0)) {
     return {
       slots,
       prompt: `${header}\n\n현재 시나리오에는 Nanobanana 그래픽 자산이 필요하지 않습니다.`
@@ -283,9 +350,13 @@ function buildNanobananaPromptPayload(scenario) {
     "\n- 투명 배경 필요 시 PNG, 그 외 JPG" +
     "\n- 각 이미지는 개별 PNG/JPG 파일로 전달 (ZIP 번들 불가)";
 
+  const overrideNote = buildNanobananaOverrideNote(scenario, normalisedPerRole, slots.length);
+  const combinedBody = [body, overrideNote].filter(Boolean).join("\n\n");
+
   return {
     slots,
-    prompt: `${header}\n\n${body}${footer}`
+    requestedAssetCount,
+    prompt: `${header}\n\n${combinedBody || "위 지침에 따라 Nanobanana 자산을 설계해 주세요."}${footer}`
   };
 }
 function normaliseScenario(raw = {}) {
@@ -609,22 +680,40 @@ function resetGraphicsBundleTracking() {
   updateGraphicsBundleStatus("시나리오가 로드되면 필요한 Nanobanana 이미지와 업로드 상태가 표시됩니다.", "info");
 }
 
-function refreshNanobananaPromptUI(scenario) {
+function refreshNanobananaPromptUI(scenario, options = {}) {
+  const { preserveUploads = false, forceRegeneratePrompt = false } = options;
   if (!scenario) {
     resetGraphicsBundleTracking();
     return;
   }
 
-  resetGraphicsBundleTracking();
+  if (!preserveUploads) {
+    resetGraphicsBundleTracking();
+  }
+
   const promptField = document.getElementById("nanobananaPrompt");
   const existingAssets = scenario.assets || {};
-  const legacyBundle = existingAssets.graphicsBundle ? [existingAssets.graphicsBundle] : [];
-  const assetList = ensureArray(existingAssets.graphicsAssets);
-  graphicsAssetsMeta = assetList.length ? assetList : legacyBundle;
+  if (!preserveUploads) {
+    const legacyBundle = existingAssets.graphicsBundle ? [existingAssets.graphicsBundle] : [];
+    const assetList = ensureArray(existingAssets.graphicsAssets);
+    graphicsAssetsMeta = assetList.length ? assetList : legacyBundle;
+  }
 
-  const payload = buildNanobananaPromptPayload(scenario);
-  nanobananaPromptText = existingAssets.nanobananaPrompt || payload.prompt;
-  scenarioNeedsGraphics = payload.slots.length > 0;
+  const preferredCount = getNanobananaCountPreference();
+  const payload = buildNanobananaPromptPayload(scenario, preferredCount);
+  const hasOverride = preferredCount !== null;
+  const shouldUseExistingPrompt = existingAssets.nanobananaPrompt && !hasOverride && !forceRegeneratePrompt;
+
+  nanobananaPromptText = shouldUseExistingPrompt ? existingAssets.nanobananaPrompt : payload.prompt;
+
+  const existingNeedsFlag =
+    typeof existingAssets.needsGraphics === "boolean" ? existingAssets.needsGraphics : payload.requestedAssetCount > 0;
+
+  scenarioNeedsGraphics = shouldUseExistingPrompt ? existingNeedsFlag : payload.requestedAssetCount > 0;
+  if ((graphicsAssetsMeta.length || graphicsFiles.length) && !scenarioNeedsGraphics) {
+    scenarioNeedsGraphics = true;
+  }
+
   if (promptField) {
     promptField.value = nanobananaPromptText;
   }
@@ -1045,6 +1134,16 @@ function applyUserRequirementsToPrompt() {
   );
 }
 
+function handleNanobananaCountInput() {
+  const guideField = document.getElementById("promptGuide");
+  if (guideField) {
+    guideField.value = buildPromptGuide();
+  }
+  if (draftScenario) {
+    refreshNanobananaPromptUI(draftScenario, { preserveUploads: true, forceRegeneratePrompt: true });
+  }
+}
+
 async function handleSaveScenario() {
   if (!draftScenario) {
     setBuilderStatus("먼저 프롬프트 JSON을 업로드해 주세요.", "warn");
@@ -1138,6 +1237,7 @@ function setupScenarioBuilder() {
   const applyRequirementsBtn = document.getElementById("applyUserRequirements");
   const copyNanobananaBtn = document.getElementById("copyNanobananaPrompt");
   const graphicsInput = document.getElementById("graphicsBundleInput");
+  const nanobananaCountInput = document.getElementById("userNanobananaCount");
 
   if (downloadBtn) {
     downloadBtn.addEventListener("click", downloadPromptTemplate);
@@ -1168,6 +1268,9 @@ function setupScenarioBuilder() {
   }
   if (graphicsInput) {
     graphicsInput.addEventListener("change", handleGraphicsFilesChange);
+  }
+  if (nanobananaCountInput) {
+    nanobananaCountInput.addEventListener("input", handleNanobananaCountInput);
   }
   resetGraphicsBundleTracking();
   displayDraftScenario(null);
