@@ -62,6 +62,58 @@ function ensureArray(value) {
 const VISUAL_STAGE_KEYS = ["clue_a", "clue_b", "clue_c"];
 const HANGUL_REGEX = /[\u1100-\u11FF\u3130-\u318F\uA960-\uA97F\uAC00-\uD7FF]/;
 
+const PLACEHOLDER_VISUAL_HINTS = [
+  { pattern: /(유리|glass)/i, phrase: "깨진 유리 패널과 반사광" },
+  { pattern: /(옥상|roof)/i, phrase: "옥상 난간과 젖은 발자국" },
+  { pattern: /(비|빗소리|rain)/i, phrase: "빗물 웅덩이와 물방울 자국" },
+  { pattern: /(정원|garden|식물)/i, phrase: "실내 정원 식물과 조명" },
+  { pattern: /(혈|피|blood)/i, phrase: "혈흔과 번진 자국" },
+  { pattern: /(CCTV|카메라)/i, phrase: "벽면 CCTV 모듈" },
+  { pattern: /(유물|artifact|조각|조형)/i, phrase: "전시 조형물과 파손된 받침" }
+];
+
+const STAGE_PLACEHOLDER_BLUEPRINTS = {
+  clue_a: {
+    description: "사건 직후 현장을 넓게 보여주고 즉각적인 물증을 강조하세요.",
+    shotType: "ShotType: wide-angle establishing shot from elevated corner, 24mm lens.",
+    subjectFocus: (context) =>
+      `SubjectFocus: ${context.personaName || "현장"}가 처음 목격하는 핵심 단서(발자국, 깨진 장식, 쓰러진 소품).`,
+    keyObjects: (context) =>
+      `KeyObjects & PhysicalTrace: ${context.hints.join(", ") || "흩어진 물증"}, 피해자의 소지품, 즉흥적인 흔적 1~2개.`,
+    environment: (context) =>
+      `Environment & SpatialClues: ${context.primaryLocation}의 구조(천장, 출입문, 감시카메라, 잠긴 통로)를 한 화면에 담으세요.`,
+    lighting: "Lighting & Mood: cold midnight ambience mixed with gallery spotlights, rain reflection, cinematic noir.",
+    example: (context) =>
+      `예: 빗물 젖은 유리 정원 바닥에 남은 미끄러진 발자국과 깨진 패널 파편을 한 시야에 구성.`
+  },
+  clue_b: {
+    description: "중간 단계에서 조작된 알리바이나 은폐 흔적을 근접 묘사하세요.",
+    shotType: "ShotType: medium close-up with shallow depth of field, 50mm lens.",
+    subjectFocus: (context) =>
+      `SubjectFocus: ${context.personaName || "인물"}의 손길이 닿은 소도구나 조작 흔적(지문, 섬유, 장치).`,
+    keyObjects: (context) =>
+      `KeyObjects & PhysicalTrace: ${context.secondaryHint || "섬세한 물증"}, 장치 패널, 문 손잡이, 뒤틀린 조명, 유류품.`,
+    environment: (context) =>
+      `Environment & SpatialClues: ${context.primaryLocation} 내 특정 코너(보관실, 통로, 제어 패널)를 배경으로 배치.`,
+    lighting: "Lighting & Mood: moody side lighting with sharp contrast, accent colors from exhibit LEDs.",
+    example: () =>
+      "예: 잠긴 문 옆 터치패드에 남은 장갑자국과 교란된 배선 클로즈업."
+  },
+  clue_c: {
+    description: "최종 단계에서는 범인을 지목할 결정적 증거를 극근접으로 그립니다.",
+    shotType: "ShotType: macro detail shot, 85mm lens, shallow focus.",
+    subjectFocus: (context) =>
+      `SubjectFocus: ${context.personaName || "범인"}만 알고 있는 비밀 장치나 단서의 극근접 디테일.`,
+    keyObjects: () =>
+      "KeyObjects & PhysicalTrace: 숨겨진 트리거, 혈흔이 묻은 공구, 파손된 키카드, 손에 쥔 미니어처 작품.",
+    environment: (context) =>
+      `Environment & SpatialClues: ${context.primaryLocation}의 그림자 속 일부분(바닥 틈새, 조형물 뒤)을 배경으로 둡니다.`,
+    lighting: "Lighting & Mood: razor-sharp spotlight carving through darkness, high contrast to dramatize texture.",
+    example: () =>
+      "예: 깨진 조각상 내부에 숨겨둔 자물쇠와 묻어난 혈흔 세부 묘사."
+  }
+};
+
 function containsHangul(text = "") {
   return HANGUL_REGEX.test(text);
 }
@@ -97,6 +149,59 @@ function describeVisualFocusHint(slot) {
   const base = "Focus purely on physical cues—no captions, signage, interface chrome, or lettering of any kind.";
   const hint = VISUAL_FOCUS_HINTS[slot?.stage] || VISUAL_FOCUS_HINTS.default;
   return `${base} ${hint}`;
+}
+
+function deriveScenarioVisualHints(scenario) {
+  const summary = (scenario?.summary || "") + " " + (scenario?.tone || "");
+  const hints = PLACEHOLDER_VISUAL_HINTS.filter(({ pattern }) => pattern.test(summary)).map(
+    (entry) => entry.phrase
+  );
+  if (!hints.length) {
+    hints.push("피해자 주변에 흩어진 물증", "잠긴 출입구 주변 흔적");
+  } else if (hints.length === 1) {
+    hints.push("잠긴 출입구 주변 흔적");
+  }
+  return hints.slice(0, 3);
+}
+
+function summariseScenarioSnippet(scenario) {
+  const summary = scenario?.summary || "";
+  if (!summary) return "";
+  const split = summary.split(/(?<=[.!?])\s+/)[0];
+  return split?.trim() || summary.trim();
+}
+
+function buildPlaceholderBlueprintData({ scenario, personaName, roleLabel, stageKey, hints }) {
+  const blueprint = STAGE_PLACEHOLDER_BLUEPRINTS[stageKey] || STAGE_PLACEHOLDER_BLUEPRINTS.clue_a;
+  const context = {
+    personaName,
+    roleLabel,
+    stageLabel: stageLabels[stageKey] || stageKey,
+    summarySnippet: summariseScenarioSnippet(scenario),
+    primaryLocation: scenario?.title || scenario?.tone || "사건 현장",
+    hints,
+    primaryHint: hints[0] || "현장 물증",
+    secondaryHint: hints[1] || hints[0] || "은폐 흔적"
+  };
+  const descriptionParts = [
+    `${context.stageLabel} 단계 증거 기획`,
+    blueprint.description,
+    context.summarySnippet ? `배경: ${context.summarySnippet}` : null,
+    blueprint.example ? blueprint.example(context) : null
+  ].filter(Boolean);
+  const promptSegments = [
+    blueprint.shotType,
+    blueprint.subjectFocus(context),
+    blueprint.keyObjects(context),
+    blueprint.environment(context),
+    blueprint.lighting,
+    "TextBan: Text-free artwork. Leave every signage blank for HTML overlay.",
+    "Use ultra realistic materials, 4K render."
+  ];
+  return {
+    description: descriptionParts.join(" · "),
+    prompt: promptSegments.join(" ")
+  };
 }
 
 function listRoleGroupNames(scenario, key) {
@@ -204,6 +309,51 @@ function normaliseVisualEvidenceCollection(source) {
   };
 }
 
+function getPersonasForRoleGroup(scenario, groupKey) {
+  return ensureArray(scenario?.roles?.[groupKey]).filter((persona) => persona && persona.name);
+}
+
+function generatePlaceholderSlots(scenario, perRoleTarget, slots) {
+  if (!Number.isFinite(perRoleTarget) || perRoleTarget <= 0) {
+    return [];
+  }
+  const hints = deriveScenarioVisualHints(scenario);
+  const placeholders = [];
+  ROLE_GROUP_CONFIG.forEach((group) => {
+    const personas = getPersonasForRoleGroup(scenario, group.key);
+    const personaFallback = personas.length ? personas : [{ name: group.label }];
+    const existingCount = slots.filter((slot) => slot.roleGroup === group.key).length;
+    const needed = Math.max(0, perRoleTarget - existingCount);
+    if (!needed) {
+      return;
+    }
+    for (let i = 0; i < needed; i += 1) {
+      const persona = personaFallback[i % personaFallback.length];
+      const personaName = persona?.name || group.label;
+      const stageKey = VISUAL_STAGE_KEYS[i % VISUAL_STAGE_KEYS.length];
+      const blueprint = buildPlaceholderBlueprintData({
+        scenario,
+        personaName,
+        roleLabel: group.label,
+        stageKey,
+        hints
+      });
+      placeholders.push({
+        context: `${personaName} (${group.label})`,
+        stage: stageKey,
+        title: `${personaName} ${stageLabels[stageKey] || stageKey} 증거 설계`,
+        description: blueprint.description,
+        prompt: blueprint.prompt,
+        htmlText: "",
+        allowedEnglishText: [],
+        roleGroup: group.key,
+        placeholder: true
+      });
+    }
+  });
+  return placeholders;
+}
+
 function collectVisualEvidenceSlots(scenario) {
   const slots = [];
   const pushSlot = ({
@@ -213,7 +363,9 @@ function collectVisualEvidenceSlots(scenario) {
     description,
     html,
     prompt,
-    allowedEnglishText = []
+    allowedEnglishText = [],
+    roleGroup = null,
+    placeholder = false
   }) => {
     if (!context && !title) return;
     const hasInlineHtml = typeof html === "string" && html.trim().length > 0;
@@ -229,7 +381,9 @@ function collectVisualEvidenceSlots(scenario) {
       description,
       prompt,
       htmlText,
-      allowedEnglishText: englishList
+      allowedEnglishText: englishList,
+      roleGroup,
+      placeholder
     });
   };
 
@@ -241,11 +395,12 @@ function collectVisualEvidenceSlots(scenario) {
       description: item.description || "",
       prompt: item.imagePrompt || "",
       html: item.html || "",
-      allowedEnglishText: item.allowedEnglishText
+      allowedEnglishText: item.allowedEnglishText,
+      roleGroup: null
     });
   });
 
-  const collectPersona = (personas = [], roleLabel) => {
+  const collectPersona = (personas = [], roleLabel, roleGroup) => {
     personas.forEach((persona) => {
       const visualMap = normaliseVisualEvidenceCollection(persona.visualEvidence);
       VISUAL_STAGE_KEYS.forEach((stageKey) => {
@@ -257,28 +412,35 @@ function collectVisualEvidenceSlots(scenario) {
             description: item.description || "",
             prompt: item.imagePrompt || "",
             html: item.html || "",
-            allowedEnglishText: item.allowedEnglishText
+            allowedEnglishText: item.allowedEnglishText,
+            roleGroup
           });
         });
       });
     });
   };
 
-  collectPersona(ensureArray(scenario?.roles?.detective), "탐정");
-  collectPersona(ensureArray(scenario?.roles?.culprit), "범인");
-  collectPersona(ensureArray(scenario?.roles?.suspects), "용의자");
+  collectPersona(ensureArray(scenario?.roles?.detective), "탐정", "detective");
+  collectPersona(ensureArray(scenario?.roles?.culprit), "범인", "culprit");
+  collectPersona(ensureArray(scenario?.roles?.suspects), "용의자", "suspects");
 
   return slots;
 }
 
 function buildNanobananaPromptPayload(scenario, perRoleTarget = null) {
-  const slots = collectVisualEvidenceSlots(scenario);
+  let slots = collectVisualEvidenceSlots(scenario);
   const summary = scenario?.summary || "";
   const normalisedPerRole = Number.isFinite(perRoleTarget)
     ? Math.max(0, Math.min(Math.trunc(perRoleTarget), 5))
     : null;
   const preferredTotal =
     normalisedPerRole !== null ? normalisedPerRole * ROLE_GROUP_CONFIG.length : null;
+  if (normalisedPerRole && normalisedPerRole > 0) {
+    const placeholders = generatePlaceholderSlots(scenario, normalisedPerRole, slots);
+    if (placeholders.length) {
+      slots = [...slots, ...placeholders];
+    }
+  }
   let requestedAssetCount = slots.length;
   if (normalisedPerRole !== null) {
     if (normalisedPerRole === 0) {
@@ -327,8 +489,9 @@ function buildNanobananaPromptPayload(scenario, perRoleTarget = null) {
         "Do not render any text, numerals, signage, UI chrome, stickers, or labels. Keep every surface natural and story-driven.";
       const enforcedPrompt = `${basePrompt} ${noTextDirective} ${visualClueRule}`;
       const focusHint = describeVisualFocusHint(slot);
+      const slotPrefix = slot.placeholder ? "[설계 필요] " : "";
       const lines = [
-        `${index + 1}. ${slot.context}${stageLabel ? ` · ${stageLabel}` : ""} - ${slot.title}`,
+        `${index + 1}. ${slotPrefix}${slot.context}${stageLabel ? ` · ${stageLabel}` : ""} - ${slot.title}`,
         `   - 씬 설명: ${slot.description || slot.htmlText || "상세 설명 없음"}`,
         `   - Nanobanana 프롬프트: ${enforcedPrompt}`,
         `   - 텍스트 정책: ${strictTextPolicy}`,
