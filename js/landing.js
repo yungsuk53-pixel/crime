@@ -795,6 +795,42 @@ function getTrimmedInputValue(elementId) {
   return el.value.trim();
 }
 
+function getNanobananaCountPreference() {
+  const input = document.getElementById("userNanobananaCount");
+  if (!input || typeof input.value !== "string") {
+    return null;
+  }
+  const trimmed = input.value.trim();
+  if (trimmed === "") {
+    return null;
+  }
+  const parsed = Number.parseInt(trimmed, 10);
+  if (Number.isNaN(parsed)) {
+    return null;
+  }
+  const clamped = Math.max(0, Math.min(parsed, 5));
+  if (clamped !== parsed) {
+    input.value = clamped.toString();
+  }
+  return clamped;
+}
+
+function describeNanobananaPreference(count) {
+  if (count === null || count === undefined) {
+    return "";
+  }
+  if (count <= 0) {
+    return "**Nanobanana 시각 자료:** Nanobanana 이미지는 요청하지 않고 HTML 기반 증거만 활용해 주세요.\n\n";
+  }
+  const totalMinimum = count * 3;
+  const perRoleText =
+    "각 Nanobanana 증거는 HTML을 비워두고 imagePrompt로만 설명하며 clue_a/b/c 단계에 분산 배치합니다.";
+  return (
+    `**Nanobanana 시각 자료:** 탐정 · 범인 · 용의자 역할군마다 최소 ${count}개씩 Nanobanana 전용 증거를 포함해 ` +
+    `총 ${totalMinimum}개 이상을 확보해 주세요. ${perRoleText}\n\n`
+  );
+}
+
 function buildPromptGuide() {
   // data.js에서 가져온 고품질 프롬프트 가이드 사용
   let guide = SCENARIO_GENERATION_GUIDE;
@@ -803,9 +839,10 @@ function buildPromptGuide() {
   const userTheme = getTrimmedInputValue("userTheme");
   const userPlayerCount = getTrimmedInputValue("userPlayerCount");
   const userRequirements = getTrimmedInputValue("userRequirements");
+  const userNanobananaCount = getNanobananaCountPreference();
   
   // 사용자 입력이 있으면 프롬프트 앞에 추가
-  if (userTheme || userPlayerCount || userRequirements) {
+  if (userTheme || userPlayerCount || userRequirements || userNanobananaCount !== null) {
     let userInput = "\n\n## 🎯 사용자 요청 사항\n\n";
     if (userTheme) {
       userInput += `**주제/배경:** ${userTheme}\n\n`;
@@ -816,6 +853,7 @@ function buildPromptGuide() {
     if (userRequirements) {
       userInput += `**특별 요구사항:**\n${userRequirements}\n\n`;
     }
+    userInput += describeNanobananaPreference(userNanobananaCount);
     userInput += "위 조건을 고려하여 시나리오를 생성해 주세요.\n\n---\n";
     guide = userInput + guide;
   }
@@ -977,9 +1015,10 @@ function applyUserRequirementsToPrompt() {
   const userTheme = getTrimmedInputValue("userTheme");
   const userPlayerCount = getTrimmedInputValue("userPlayerCount");
   const userRequirements = getTrimmedInputValue("userRequirements");
+  const userNanobananaCount = getNanobananaCountPreference();
   
   // 입력이 없으면 경고
-  if (!userTheme && !userPlayerCount && !userRequirements) {
+  if (!userTheme && !userPlayerCount && !userRequirements && userNanobananaCount === null) {
     setBuilderStatus("적용할 요구사항을 먼저 입력해 주세요.", "warn");
     return;
   }
@@ -992,6 +1031,13 @@ function applyUserRequirementsToPrompt() {
   if (userTheme) appliedItems.push("주제/배경");
   if (userPlayerCount) appliedItems.push("추천 인원");
   if (userRequirements) appliedItems.push("특별 요구사항");
+  if (userNanobananaCount !== null) {
+    if (userNanobananaCount > 0) {
+      appliedItems.push(`Nanobanana ${userNanobananaCount}개/역할군`);
+    } else {
+      appliedItems.push("Nanobanana 미사용");
+    }
+  }
   
   setBuilderStatus(
     `✅ 프롬프트에 적용되었습니다: ${appliedItems.join(", ")}. 이제 복사하거나 다운로드하여 AI에게 전달하세요.`,
