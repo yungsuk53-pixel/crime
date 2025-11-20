@@ -212,6 +212,34 @@ function renderList(element, items = []) {
   });
 }
 
+function appendTranslationToggle(container, translationText) {
+  const text = typeof translationText === "string" ? translationText.trim() : "";
+  if (!text) return;
+
+  const panelId = `translation-${Math.random().toString(36).slice(2, 9)}`;
+  const toggleBtn = document.createElement("button");
+  toggleBtn.type = "button";
+  toggleBtn.className = "btn btn--ghost translation-toggle";
+  toggleBtn.textContent = "번역 보기";
+  toggleBtn.setAttribute("aria-expanded", "false");
+  toggleBtn.setAttribute("aria-controls", panelId);
+
+  const panel = document.createElement("div");
+  panel.id = panelId;
+  panel.className = "translation-panel";
+  panel.textContent = text;
+  panel.hidden = true;
+
+  toggleBtn.addEventListener("click", () => {
+    const expanded = toggleBtn.getAttribute("aria-expanded") === "true";
+    toggleBtn.setAttribute("aria-expanded", String(!expanded));
+    panel.hidden = expanded;
+    toggleBtn.textContent = expanded ? "번역 보기" : "번역 숨기기";
+  });
+
+  container.append(toggleBtn, panel);
+}
+
 function renderVisualEvidence(element, visualItems = []) {
   if (!element) return;
   element.innerHTML = "";
@@ -257,6 +285,8 @@ function renderVisualEvidence(element, visualItems = []) {
       `;
       container.appendChild(promptInfo);
     }
+
+    appendTranslationToggle(container, item.translation);
     
     element.appendChild(container);
   });

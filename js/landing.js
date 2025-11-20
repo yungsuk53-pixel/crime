@@ -60,6 +60,24 @@ function ensureArray(value) {
 }
 
 const VISUAL_STAGE_KEYS = ["clue_a", "clue_b", "clue_c"];
+const HANGUL_REGEX = /[\u1100-\u11FF\u3130-\u318F\uA960-\uA97F\uAC00-\uD7FF]/;
+
+function containsHangul(text = "") {
+  return HANGUL_REGEX.test(text);
+}
+
+function filterHangulSafeStrings(list = []) {
+  return list.filter((text) => {
+    if (!text) return false;
+    if (!containsHangul(text)) {
+      return true;
+    }
+    console.warn(
+      `[Nanobanana] allowedEnglishText 항목에서 한글이 포함된 문구를 제거했습니다: ${text}`
+    );
+    return false;
+  });
+}
 
 const BLANK_ZONE_HINTS = {
   clue_a: "Place the blank banner across the upper 20% of the canvas so Hangul text can sit above the scene.",
@@ -83,13 +101,13 @@ function describeBlankOverlayZone(slot) {
 
 function normaliseEnglishTextList(value) {
   if (Array.isArray(value)) {
-    return value
-      .map((text) => (typeof text === "string" ? text.trim() : ""))
-      .filter(Boolean);
+    const trimmed = value.map((text) => (typeof text === "string" ? text.trim() : ""));
+    return filterHangulSafeStrings(trimmed);
   }
   if (typeof value === "string") {
     const trimmed = value.trim();
-    return trimmed ? [trimmed] : [];
+    if (!trimmed) return [];
+    return filterHangulSafeStrings([trimmed]);
   }
   return [];
 }
@@ -216,18 +234,19 @@ function buildNanobananaPromptPayload(scenario) {
   const strictTextPolicy = [
     "No embedded text unless an explicit allowedEnglishText list is provided for that asset.",
     "When allowedEnglishText exists, render ONLY those exact English phrases (matching case/punctuation) and nothing else.",
-    "Leave clean blank signage/banner areas so Hangul overlays or translations can be added outside the image."
+    "Leave clean blank signage/banner areas so Hangul overlays or translations can be added outside the image.",
+    "Absolutely no Hangul or Korean characters may appear inside Nanobanana outputs; translations live in the UI."
   ].join(" ");
   const visualClueRule =
     "Clues must be solvable from visual cues alone (appearance, posture, objects, lighting, environment) without additional narration.";
   const translationRule =
-    "Korean translations are shown via the UI translation button; never paint Hangul or extra copy inside the artwork.";
+    "Korean translations surface only via the UI translation button, so the artwork itself must stay completely free of Hangul characters.";
   const header =
     `Nanobanana에게 아래 사건의 시각 자산을 제작해 주세요.\n` +
     `\n사건명: ${scenario?.title || "-"}` +
     `\n톤: ${scenario?.tone || "-"}` +
     `\n요약: ${summary}` +
-    `\n문자 인코딩: All text must remain in UTF-8 Hangul. Keep every Korean label exactly as provided.` +
+    `\n문자 인코딩: Hangul 텍스트는 UI HTML 오버레이에서 UTF-8로 주입되며, Nanobanana 이미지는 한글을 절대 포함하지 않습니다.` +
     `\n텍스트 정책: ${strictTextPolicy}` +
     `\n시각 단서 정책: ${visualClueRule}` +
     `\n번역 정책: ${translationRule}` +
@@ -249,9 +268,10 @@ function buildNanobananaPromptPayload(scenario) {
             ? slot.stage
             : "";
       const basePrompt = slot.prompt || slot.description || slot.htmlText || "비어 있음";
+      const noHangulDirective = "Absolutely no Hangul/Korean characters or syllables are allowed anywhere in this asset.";
       const textDirective = slot.allowedEnglishText?.length
-        ? `Use ONLY these English phrases (exact spelling/case) within the image: ${slot.allowedEnglishText.join(", ")}.`
-        : "Do not render any text; leave all signage blank.";
+        ? `Use ONLY these English phrases (exact spelling/case) within the image: ${slot.allowedEnglishText.join(", ")}. ${noHangulDirective}`
+        : `Do not render any text; leave all signage blank. ${noHangulDirective}`;
       const enforcedPrompt = `${basePrompt} ${textDirective} ${visualClueRule}`;
       const blankZoneHint = describeBlankOverlayZone(slot);
       const lines = [
