@@ -370,6 +370,8 @@ function buildNanobananaPromptPayload(scenario) {
     "Leave clean blank signage/banner areas for later Hangul HTML overlays.",
     "Reserve all Korean labels for HTML only; keep the image itself 100% character-free even if the prompt lists Hangul."
   ].join(" ");
+  const visualClueRule =
+    "Clues must be solvable from visual cues alone (appearance, posture, objects, lighting, environment) without any written language.";
   const header =
     `Nanobanana에게 아래 사건의 시각 자산을 제작해 주세요.\n` +
     `\n사건명: ${scenario?.title || "-"}` +
@@ -377,6 +379,7 @@ function buildNanobananaPromptPayload(scenario) {
     `\n요약: ${summary}` +
     `\n문자 인코딩: All text must remain in UTF-8 Hangul. Keep every Korean label exactly as provided.` +
     `\n텍스트 정책: Text-free artwork only. Leave clear blank banner/plate areas so Hangul overlays can be added later via HTML.` +
+    `\n시각 단서 정책: ${visualClueRule}` +
     `\n요청 자산: ${slots.length}개`;
 
   if (!slots.length) {
@@ -402,6 +405,7 @@ function buildNanobananaPromptPayload(scenario) {
         `   - 씬 설명: ${slot.description || slot.htmlText || "상세 설명 없음"}`,
         `   - Nanobanana 프롬프트: ${enforcedPrompt}`,
         `   - 텍스트 금지 규칙: ${strictTextFreeRules}`,
+        `   - 시각 단서 지시: ${visualClueRule}`,
         `   - 빈칸 영역 지시: ${blankZoneHint}`
       ];
       if (slot.htmlText) {
@@ -648,7 +652,7 @@ function applyScenarioDraft(rawScenario, sourceLabel = "업로드") {
 function buildPromptTemplate() {
   return {
     instructions:
-      "아래 시나리오 구조에 맞춰 고품질 범죄 추리 게임을 만들어주세요. visual 증거는 Nanobanana에 전달할 imagePrompt를 반드시 포함하고, 실제 이미지는 Nanobanana가 생성한 개별 파일(PNG/JPG 등)로 업로드할 수 있도록 설명만 제공합니다. 모든 이미지 프롬프트에는 'All text must remain in UTF-8 Hangul.' 과 같이 한글 텍스트가 깨지지 않도록 UTF-8 유지 문구를 꼭 추가하고, **이미지에는 어떤 텍스트도 넣지 말고** \"Text-free artwork, leave blank banner for HTML overlay\" 와 같은 지시를 포함해 주세요.",
+      "아래 시나리오 구조에 맞춰 고품질 범죄 추리 게임을 만들어주세요. visual 증거는 Nanobanana에 전달할 imagePrompt를 반드시 포함하되, 영수증/문자 등 텍스트가 필요한 자료는 모두 visualEvidence.html 필드에 인라인 스타일로 작성하고 이미지는 순수 비주얼 단서로만 구성해 주세요. Nanobanana가 생성할 이미지는 개별 파일(PNG/JPG 등)이며, 인상착의·동선·사물 배치 등 **글자 없이도 추리가 가능한 요소**를 구체적으로 묘사해야 합니다. 모든 이미지 프롬프트에는 'All text must remain in UTF-8 Hangul.' 과 같이 한글 텍스트가 깨지지 않도록 UTF-8 유지 문구를 꼭 추가하고, **이미지에는 어떤 텍스트도 넣지 말고** \"Text-free artwork, leave blank banner for HTML overlay\" 와 같은 지시를 포함해 주세요.",
     scenario: {
       id: "unique-kebab-case-id",
       title: "매력적이고 기억에 남는 제목",
