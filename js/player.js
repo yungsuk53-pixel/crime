@@ -399,6 +399,25 @@ function buildPersonalProfile(player, cluePackage) {
 
   // 시간별 타임라인 추가
   const timeBasedTimeline = scenario.timeline || [];
+  const personalTimeline = Array.isArray(cluePackage.timeline)
+    ? cluePackage.timeline
+        .map((entry) => {
+          if (!entry) return null;
+          if (typeof entry === "string") {
+            return {
+              time: "-",
+              description: entry
+            };
+          }
+          const description = entry.action || entry.description || "";
+          if (!description) return null;
+          return {
+            time: entry.time || "-",
+            description
+          };
+        })
+        .filter(Boolean)
+    : [];
 
   const evidenceEntries = [];
   const addEvidenceEntry = (display, detail, time = null, visualElements = []) => {
@@ -497,6 +516,7 @@ function buildPersonalProfile(player, cluePackage) {
     personaName,
     personaTitle,
     timeline,
+    personalTimeline,
     timeBasedTimeline,
     evidence: evidenceEntries,
     alibis: Array.from(alibiSet)
@@ -512,7 +532,11 @@ function renderPersonalProfile(profile) {
       ? `${profile.personaTitle ? `${profile.personaTitle} · ` : ""}${profile.personaName} 시점에서 정리된 개인 정보입니다.`
       : "역할이 확정되면 개인 정보가 표시됩니다.";
   }
-  renderTimeline(dom.profileTimeline, profile?.timeBasedTimeline || []);
+  const personalTimeline =
+    (profile?.personalTimeline && profile.personalTimeline.length
+      ? profile.personalTimeline
+      : profile?.timeBasedTimeline) || [];
+  renderTimeline(dom.profileTimeline, personalTimeline);
   renderEvidenceWithAlibis(dom.profileEvidence, profile?.evidence || []);
 }
 
@@ -848,25 +872,6 @@ function renderRoleView(player) {
     return;
   }
 
-  // 개인 타임라인 표시
-  if (cluePackage.timeline && cluePackage.timeline.length > 0) {
-    const timelineSection = document.createElement("div");
-    timelineSection.className = "role-view__section";
-    const timelineTitle = document.createElement("h4");
-    timelineTitle.textContent = "🕐 나의 타임라인";
-    timelineSection.appendChild(timelineTitle);
-    
-    const timelineList = document.createElement("ul");
-    timelineList.className = "clue-list clue-list--timeline";
-    cluePackage.timeline.forEach(entry => {
-      const item = document.createElement("li");
-      item.innerHTML = `<strong>${entry.time}</strong> - ${entry.action}`;
-      timelineList.appendChild(item);
-    });
-    timelineSection.appendChild(timelineList);
-    container.appendChild(timelineSection);
-  }
-
   // 추천 질문 표시
   if (cluePackage.suggestedQuestions && cluePackage.suggestedQuestions.length > 0) {
     const questionsSection = document.createElement("div");
@@ -1039,8 +1044,12 @@ function updateStageTracker(stageKey) {
   updateStageBadge(stageKey);
   
   // 상단 상태바 업데이트
-  if (state.session && state.session.stage_end_at) {
-    const remainingMs = state.session.stage_end_at - Date.now();
+  if (
+    state.session &&
+    state.session.auto_stage_enabled &&
+    state.session.stage_deadline_at
+  ) {
+    const remainingMs = new Date(state.session.stage_deadline_at).getTime() - Date.now();
     const remainingSeconds = Math.max(0, Math.floor(remainingMs / 1000));
     updateGameStatusBar(stageKey, remainingSeconds);
   } else {
@@ -1115,6 +1124,7 @@ function updateCountdown(deadlineIso) {
     const diff = new Date(deadlineIso).getTime() - Date.now();
     if (diff <= 0) {
       valueEl.textContent = "전환 준비 중";
+      updateGameStatusBar(state.session?.stage);
       clearInterval(state.countdownInterval);
       return;
     }
@@ -1594,13 +1604,13 @@ async function refreshSessionState() {
     updateVoteUI();
     if (state.session.stage === "result") {
       renderVoteOutcome(state.session);
-      displayGameResult(state.session, state.roster, scenario); // 게임 결과 표시
+      displayGameResult(state.session, state.roster); // 게임 결과 표시
     }
   }
 
   if (state.session.stage === "result") {
     renderVoteOutcome(state.session);
-    displayGameResult(state.session, state.roster, scenario); // 게임 결과 표시
+    displayGameResult(state.session, state.roster); // 게임 결과 표시
   }
 
   updateReadyUI();
@@ -1702,7 +1712,11 @@ function populateVoteOptions() {
     .forEach((player) => {
       const option = document.createElement("option");
       option.value = player.id;
-      option.textContent = player.role ? `${player.name} (${player.role})` : player.name;
+      const roleLabel =
+        (player.character && player.character !== "-")
+          ? player.character
+          : player.name;
+      option.textContent = roleLabel || player.name || "미배정";
       dom.voteTarget.appendChild(option);
     });
   if (existingValue) {
@@ -1842,6 +1856,22 @@ async function loadChatMessages(sessionCode) {
   }
 }
 
+function getPlayerChatDisplayLabel(message) {
+  if (!message) return "플레이어";
+  const rosterMatch = (state.roster || []).find(
+    (member) => member.name === message.player_name
+  );
+  if (rosterMatch) {
+    if (rosterMatch.character && rosterMatch.character !== "-") {
+      return rosterMatch.character;
+    }
+    if (rosterMatch.name) {
+      return rosterMatch.name;
+    }
+  }
+  return message.player_name || "플레이어";
+}
+
 function renderChatMessages(messages = []) {
   dom.chatLog.innerHTML = "";
   if (!messages.length) {
@@ -1862,10 +1892,10 @@ function renderChatMessages(messages = []) {
       hour: "2-digit",
       minute: "2-digit"
     });
-    
-    // 역할(탐정/범인/용의자)과 캐릭터 이름 모두 표시
-    const displayName = msg.role || msg.player_name;
-    const roleBadge = msg.role_type ? `<span class="chat-role-badge chat-role-badge--${msg.role_type}">${msg.role_type}</span>` : '';
+    const displayName = getPlayerChatDisplayLabel(msg);
+    const roleBadge = msg.role_type
+      ? `<span class="chat-role-badge chat-role-badge--${msg.role_type}">${msg.role_type}</span>`
+      : "";
     meta.innerHTML = `<span>${roleBadge}${displayName}</span><span>${timeText}</span>`;
 
     const text = document.createElement("p");
@@ -2056,7 +2086,7 @@ function updateGameStatusBar(stage, remainingSeconds) {
   if (remainingSeconds !== undefined && remainingSeconds >= 0) {
     const minutes = Math.floor(remainingSeconds / 60);
     const seconds = remainingSeconds % 60;
-    dom.stageTimer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    dom.stageTimer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   } else {
     dom.stageTimer.textContent = "--:--";
   }
@@ -2126,49 +2156,70 @@ function closeCharacterModal() {
 }
 
 // 게임 결과 표시
-function displayGameResult(session, players, scenario) {
+function displayGameResult(session, players) {
   if (!dom.gameResult || !dom.gameResultCard) return;
-  
-  const votes = {};
-  players.forEach(p => {
-    if (p.vote_target) {
-      votes[p.vote_target] = (votes[p.vote_target] || 0) + 1;
+  if (!session || session.stage !== "result") {
+    dom.gameResultCard.style.display = "none";
+    dom.gameResult.innerHTML = "";
+    return;
+  }
+
+  let parsedSummary = null;
+  if (session.vote_summary) {
+    try {
+      parsedSummary =
+        typeof session.vote_summary === "string"
+          ? JSON.parse(session.vote_summary)
+          : session.vote_summary;
+    } catch (error) {
+      console.warn("vote summary parse failed", error);
     }
-  });
-  
-  const sortedVotes = Object.entries(votes).sort((a, b) => b[1] - a[1]);
-  const topVoted = sortedVotes[0]?.[0];
-  
-  // 실제 범인 찾기
-  const culprit = players.find(p => p.role === "범인");
-  const isCulpritCaught = topVoted === culprit?.character || topVoted === culprit?.name;
-  
-  let resultHTML = `
+  }
+
+  const tallies = parsedSummary?.tallies
+    ? Object.entries(parsedSummary.tallies)
+    : [];
+  const sortedTallies = tallies.sort((a, b) => (b[1] || 0) - (a[1] || 0));
+  const voteList = sortedTallies.length
+    ? `<ul class="vote-results-list">${sortedTallies
+        .map(([name, count]) => `<li><strong>${name}</strong>: ${count}표</li>`)
+        .join("")}</ul>`
+    : "<p>기록된 투표 결과가 없습니다.</p>";
+
+  const culpritPlayer = players.find((p) => p.role === "범인");
+  const culpritLabel =
+    culpritPlayer?.character ||
+    culpritPlayer?.name ||
+    parsedSummary?.culprit ||
+    "알 수 없음";
+
+  const verdictTitle = session.winning_side === "citizens"
+    ? "🎉 시민 승리!"
+    : session.winning_side === "culprit"
+      ? "😈 범인 승리!"
+      : "결과 발표";
+  const verdictText = session.winning_side === "citizens"
+    ? "범인을 찾아냈습니다!"
+    : session.winning_side === "culprit"
+      ? "범인이 탈출했습니다!"
+      : "게임이 종료되었습니다.";
+
+  dom.gameResult.innerHTML = `
     <div class="game-result">
       <div class="game-result__section">
         <h4>📊 투표 결과</h4>
-        <ul class="vote-results-list">
-  `;
-  
-  sortedVotes.forEach(([character, count]) => {
-    resultHTML += `<li><strong>${character}</strong>: ${count}표</li>`;
-  });
-  
-  resultHTML += `
-        </ul>
+        ${voteList}
       </div>
       <div class="game-result__section">
         <h4>🎭 범인 공개</h4>
-        <p class="culprit-reveal">범인은 <strong>${culprit?.character || culprit?.name || "알 수 없음"}</strong>입니다!</p>
+        <p class="culprit-reveal">범인은 <strong>${culpritLabel}</strong>입니다!</p>
       </div>
       <div class="game-result__verdict">
-        <h3>${isCulpritCaught ? "🎉 시민 승리!" : "😈 범인 승리!"}</h3>
-        <p>${isCulpritCaught ? "범인을 찾아냈습니다!" : "범인이 탈출했습니다!"}</p>
+        <h3>${verdictTitle}</h3>
+        <p>${verdictText}</p>
       </div>
     </div>
   `;
-  
-  dom.gameResult.innerHTML = resultHTML;
   dom.gameResultCard.style.display = "block";
 }
 

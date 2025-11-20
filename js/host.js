@@ -148,7 +148,8 @@ const state = {
   chatIdentity: null,
   isAssigningRoles: false,
   readyInFlight: false,
-  timers: {}
+  timers: {},
+  autoVoteClosePending: false
 };
 
 const HOST_STORAGE_KEY = "crimeSceneHostSession";
@@ -509,7 +510,11 @@ function renderHostPersonalProfile(profile) {
       ? `${profile.personaTitle ? `${profile.personaTitle} · ` : ""}${profile.personaName} 시점에서 정리된 개인 정보입니다.`
       : "역할이 확정되면 개인 정보가 표시됩니다.";
   }
-  renderTimeline(dom.hostProfileTimeline, profile?.timeBasedTimeline || []);
+  const personalTimeline =
+    (profile?.personalTimeline && profile.personalTimeline.length
+      ? profile.personalTimeline
+      : profile?.timeBasedTimeline) || [];
+  renderTimeline(dom.hostProfileTimeline, personalTimeline);
   renderEvidenceWithAlibis(dom.hostProfileEvidence, profile?.evidence || []);
 }
 
@@ -2178,6 +2183,7 @@ async function loadPlayers() {
     updateVoteStatus();
     updateHostReadyUI();
     updateHostVoteUI();
+    maybeAutoCloseVoting(players);
     updateHostGameStatusBar();
     if (state.sessionRecordId) {
       try {
@@ -2201,6 +2207,30 @@ async function loadPlayers() {
   } catch (error) {
     console.error(error);
     showToast("플레이어 목록을 불러오지 못했습니다.", "error");
+  }
+}
+
+function maybeAutoCloseVoting(players = []) {
+  if (!state.activeSession || state.activeSession.stage !== "voting") {
+    state.autoVoteClosePending = false;
+    return;
+  }
+  const eligible = players.filter((player) => !player.is_bot);
+  if (!eligible.length) {
+    return;
+  }
+  const allVoted = eligible.every((player) => player.has_voted);
+  if (allVoted && !state.autoVoteClosePending) {
+    state.autoVoteClosePending = true;
+    setTimeout(async () => {
+      try {
+        await handleCloseVoting(true);
+      } catch (error) {
+        console.error("자동 투표 종료 실패", error);
+      } finally {
+        state.autoVoteClosePending = false;
+      }
+    }, 200);
   }
 }
 
@@ -2380,6 +2410,27 @@ function buildPersonalProfile(player, cluePackage) {
   });
   const timeline = Array.from(timelineSet);
 
+  const timeBasedTimeline = scenario.timeline || [];
+  const personalTimeline = Array.isArray(cluePackage.timeline)
+    ? cluePackage.timeline
+        .map((entry) => {
+          if (!entry) return null;
+          if (typeof entry === "string") {
+            return {
+              time: "-",
+              description: entry
+            };
+          }
+          const description = entry.action || entry.description || "";
+          if (!description) return null;
+          return {
+            time: entry.time || "-",
+            description
+          };
+        })
+        .filter(Boolean)
+    : [];
+
   const evidenceEntries = [];
   const addEvidenceEntry = (display, detail) => {
     if (!display) return;
@@ -2473,6 +2524,8 @@ function buildPersonalProfile(player, cluePackage) {
     personaName,
     personaTitle,
     timeline,
+    personalTimeline,
+    timeBasedTimeline,
     evidence: evidenceEntries,
     alibis: Array.from(alibiSet)
   };
@@ -3067,6 +3120,22 @@ async function loadChatMessages(sessionCode) {
   }
 }
 
+function getChatDisplayLabel(message) {
+  if (!message) return "플레이어";
+  const rosterMatch = (state.players || []).find(
+    (player) => player.name === message.player_name
+  );
+  if (rosterMatch) {
+    if (rosterMatch.character && rosterMatch.character !== "-") {
+      return rosterMatch.character;
+    }
+    if (rosterMatch.name) {
+      return rosterMatch.name;
+    }
+  }
+  return message.player_name || message.role || "플레이어";
+}
+
 function renderChatMessages(messages = []) {
   dom.chatLog.innerHTML = "";
   if (!messages.length) {
@@ -3086,8 +3155,8 @@ function renderChatMessages(messages = []) {
       hour: "2-digit",
       minute: "2-digit"
     });
-    // 배역 이름만 표시 (역할 표시 제거)
-    meta.innerHTML = `<span>${msg.role || msg.player_name}</span><span>${timeText}</span>`;
+    const displayLabel = getChatDisplayLabel(msg);
+    meta.innerHTML = `<span>${displayLabel}</span><span>${timeText}</span>`;
 
     const text = document.createElement("p");
     text.className = "chat-message__text";
