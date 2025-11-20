@@ -345,6 +345,11 @@ function collectVisualEvidenceSlots(scenario) {
 function buildNanobananaPromptPayload(scenario) {
   const slots = collectVisualEvidenceSlots(scenario);
   const summary = scenario?.summary || "";
+  const strictTextFreeRules = [
+    "No embedded text or typography in the artwork.",
+    "Leave clean blank signage/banner areas for later Hangul HTML overlays.",
+    "Reserve all Korean labels for HTML only; keep the image itself free of characters."
+  ].join(" ");
   const header =
     `Nanobanana에게 아래 사건의 시각 자산을 제작해 주세요.\n` +
     `\n사건명: ${scenario?.title || "-"}` +
@@ -369,10 +374,13 @@ function buildNanobananaPromptPayload(scenario) {
           : slot.stage && slot.stage !== "global"
             ? slot.stage
             : "";
+      const basePrompt = slot.prompt || slot.description || slot.htmlText || "비어 있음";
+      const enforcedPrompt = `${basePrompt} (${strictTextFreeRules})`;
       const lines = [
         `${index + 1}. ${slot.context}${stageLabel ? ` · ${stageLabel}` : ""} - ${slot.title}`,
         `   - 씬 설명: ${slot.description || slot.htmlText || "상세 설명 없음"}`,
-        `   - Nanobanana 프롬프트: ${slot.prompt || slot.description || slot.htmlText || "비어 있음"}`
+        `   - Nanobanana 프롬프트: ${enforcedPrompt}`,
+        `   - 텍스트 금지 규칙: ${strictTextFreeRules}`
       ];
       if (slot.htmlText) {
         lines.push(`   - HTML 레이아웃 참고: ${slot.htmlText}`);
