@@ -3160,7 +3160,12 @@ function renderChatMessages(messages = []) {
 
     const text = document.createElement("p");
     text.className = "chat-message__text";
-    text.textContent = msg.message;
+    if (msg.html_payload) {
+      text.innerHTML = msg.html_payload;
+      normaliseFirebaseAssetLinks(text);
+    } else {
+      text.textContent = msg.message;
+    }
 
     item.append(meta, text);
     dom.chatLog.appendChild(item);

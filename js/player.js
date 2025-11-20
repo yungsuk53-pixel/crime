@@ -540,6 +540,71 @@ function renderPersonalProfile(profile) {
   renderEvidenceWithAlibis(dom.profileEvidence, profile?.evidence || []);
 }
 
+function buildEvidenceSharePayload(evidence, personaLabel) {
+  if (!evidence) {
+    return { text: "", html: "" };
+  }
+  const title = evidence.title || evidence.type || "시각 증거";
+  const stageLabel = evidence.stage_label ? ` (${evidence.stage_label})` : "";
+  const heading = `[공유] ${personaLabel || "나"}의 ${title}${stageLabel}`;
+  let bodyLines = [];
+  if (evidence.description) {
+    bodyLines.push(evidence.description.trim());
+  }
+  if (evidence.imagePrompt) {
+    bodyLines.push(`프롬프트: ${evidence.imagePrompt.trim()}`);
+  }
+  const textPayload = [heading, ...bodyLines].join("\n");
+  const htmlParts = [
+    `<strong>${heading}</strong>`,
+    evidence.description ? `<p>${evidence.description}</p>` : "",
+    evidence.html ? `<div>${evidence.html}</div>` : "",
+    evidence.imagePrompt
+      ? `<pre class="chat-shared-prompt">${evidence.imagePrompt}</pre>`
+      : ""
+  ].filter(Boolean);
+  return {
+    text: textPayload,
+    html: htmlParts.join(""),
+    raw: evidence.html || "",
+    prompt: evidence.imagePrompt || ""
+  };
+}
+
+async function shareEvidenceToChat(evidence, personaLabel, triggerButton) {
+  if (!state.chatIdentity) {
+    showToast("채팅에 접속한 뒤 공유할 수 있습니다.", "warn");
+    return;
+  }
+  if (!evidence) {
+    showToast("공유할 증거가 없습니다.", "warn");
+    return;
+  }
+  const payload = buildEvidenceSharePayload(evidence, personaLabel);
+  if (!payload.text.trim()) {
+    showToast("이 증거에는 공유 가능한 설명이 없습니다.", "warn");
+    return;
+  }
+  if (triggerButton) {
+    triggerButton.disabled = true;
+  }
+  try {
+    await sendChatMessage({
+      message: payload.text,
+      htmlPayload: payload.html || null
+    });
+    showToast("증거를 채팅에 공유했습니다.", "success");
+    loadChatMessages(state.chatIdentity.sessionCode);
+  } catch (error) {
+    console.error("증거 공유 실패", error);
+    showToast("증거를 공유하지 못했습니다.", "error");
+  } finally {
+    if (triggerButton) {
+      triggerButton.disabled = false;
+    }
+  }
+}
+
 function renderEvidenceWithAlibis(element, entries = []) {
   if (!element) return;
   element.innerHTML = "";
@@ -913,11 +978,20 @@ function renderRoleView(player) {
   // 개인 시각적 증거 표시 (단계별로 공개)
   const unlockedRoundsForEvidence = getUnlockedRounds(cluePackage);
   const currentVisualEvidence = [];
-  unlockedRoundsForEvidence.forEach(round => {
+  unlockedRoundsForEvidence.forEach((round) => {
     if (round.visualEvidence && round.visualEvidence.length > 0) {
-      currentVisualEvidence.push(...round.visualEvidence);
+      const stageLabel = round.stage ? stageLabels[round.stage] || round.stage : "";
+      round.visualEvidence.forEach((evidence) => {
+        currentVisualEvidence.push({
+          ...evidence,
+          stage_key: round.stage,
+          stage_label: stageLabel
+        });
+      });
     }
   });
+  const personaShareLabel =
+    cluePackage?.persona?.name || player.character || player.name || "내 증거";
 
   if (currentVisualEvidence.length > 0) {
     const evidenceSection = document.createElement("div");
@@ -926,13 +1000,41 @@ function renderRoleView(player) {
     evidenceTitle.textContent = "📋 나만 아는 증거";
     evidenceSection.appendChild(evidenceTitle);
     
-    currentVisualEvidence.forEach(evidence => {
+    currentVisualEvidence.forEach((evidence) => {
       const evidenceCard = document.createElement("div");
       evidenceCard.className = "visual-evidence-card";
       
       const evidenceHeader = document.createElement("div");
       evidenceHeader.className = "visual-evidence-card__header";
-      evidenceHeader.innerHTML = `<strong>${evidence.title}</strong> <span class="badge">${evidence.type}</span>`;
+
+      const titleGroup = document.createElement("div");
+      titleGroup.className = "visual-evidence-card__title";
+
+      const evidenceTitleEl = document.createElement("strong");
+      evidenceTitleEl.textContent = evidence.title || evidence.type || "시각 증거";
+      titleGroup.appendChild(evidenceTitleEl);
+
+      if (evidence.type) {
+        const typeBadge = document.createElement("span");
+        typeBadge.className = "badge";
+        typeBadge.textContent = evidence.type;
+        titleGroup.appendChild(typeBadge);
+      }
+
+      if (evidence.stage_label) {
+        const stageBadge = document.createElement("span");
+        stageBadge.className = "badge";
+        stageBadge.textContent = evidence.stage_label;
+        titleGroup.appendChild(stageBadge);
+      }
+
+      const shareBtn = document.createElement("button");
+      shareBtn.type = "button";
+      shareBtn.className = "btn btn--ghost btn--compact visual-evidence-share-btn";
+      shareBtn.textContent = "채팅에 공유";
+      shareBtn.addEventListener("click", () => shareEvidenceToChat(evidence, personaShareLabel, shareBtn));
+
+      evidenceHeader.append(titleGroup, shareBtn);
       
       const evidenceDesc = document.createElement("p");
       evidenceDesc.className = "visual-evidence-card__description";
@@ -941,8 +1043,15 @@ function renderRoleView(player) {
       const evidenceContent = document.createElement("div");
       evidenceContent.className = "visual-evidence-card__content";
       evidenceContent.innerHTML = evidence.html || "";
-      
+
       evidenceCard.append(evidenceHeader, evidenceDesc, evidenceContent);
+
+      if (evidence.imagePrompt) {
+        const promptBlock = document.createElement("div");
+        promptBlock.className = "visual-evidence-card__prompt";
+        promptBlock.textContent = evidence.imagePrompt;
+        evidenceCard.appendChild(promptBlock);
+      }
       evidenceSection.appendChild(evidenceCard);
     });
     container.appendChild(evidenceSection);
@@ -1900,7 +2009,12 @@ function renderChatMessages(messages = []) {
 
     const text = document.createElement("p");
     text.className = "chat-message__text";
-    text.textContent = msg.message;
+    if (msg.html_payload) {
+      text.innerHTML = msg.html_payload;
+      normaliseFirebaseAssetLinks(text);
+    } else {
+      text.textContent = msg.message;
+    }
 
     item.append(meta, text);
     dom.chatLog.appendChild(item);
@@ -1917,28 +2031,38 @@ async function handleChatSubmit(event) {
   const message = dom.chatMessage.value.trim();
   if (!message) return;
   try {
-    // role_type 결정 (탐정/범인/용의자)
-    let roleType = null;
-    if (state.player && state.player.role) {
-      if (state.player.role === "탐정") roleType = "detective";
-      else if (state.player.role === "범인") roleType = "culprit";
-      else if (state.player.role.includes("용의자")) roleType = "suspect";
-    }
-    
-    await api.create("chat_messages", {
-      session_code: state.chatIdentity.sessionCode,
-      player_name: state.chatIdentity.name,
-      role: state.chatIdentity.role,
-      role_type: roleType,
-      message,
-      sent_at: new Date().toISOString()
-    });
+    await sendChatMessage({ message });
     dom.chatMessage.value = "";
     loadChatMessages(state.chatIdentity.sessionCode);
   } catch (error) {
     console.error(error);
     showToast("메시지를 전송하지 못했습니다.", "error");
   }
+}
+
+function resolveRoleType(playerRecord) {
+  if (!playerRecord?.role) return null;
+  if (playerRecord.role === "탐정") return "detective";
+  if (playerRecord.role === "범인") return "culprit";
+  if (playerRecord.role.includes("용의자")) return "suspect";
+  return null;
+}
+
+async function sendChatMessage({ message, htmlPayload }) {
+  if (!state.chatIdentity) {
+    throw new Error("CHAT_IDENTITY_MISSING");
+  }
+  let roleType = resolveRoleType(state.player);
+  const record = await api.create("chat_messages", {
+    session_code: state.chatIdentity.sessionCode,
+    player_name: state.chatIdentity.name,
+    role: state.chatIdentity.role,
+    role_type: roleType,
+    message,
+    html_payload: htmlPayload || null,
+    sent_at: new Date().toISOString()
+  });
+  return record;
 }
 
 async function sendHeartbeat() {

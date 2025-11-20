@@ -218,6 +218,13 @@ body {
     transform: translateY(-1px);
 }
 
+.btn--compact {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    border-radius: 999px;
+    gap: 6px;
+}
+
 .main {
     padding: 0 24px 72px;
     margin: 0 auto;
@@ -823,6 +830,17 @@ body {
     color: rgba(184, 188, 232, 0.75);
 }
 
+
+.chat-shared-prompt {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(12, 16, 34, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    color: rgba(210, 214, 252, 0.88);
+}
 .quick-links {
     display: grid;
     gap: 16px;
@@ -1157,6 +1175,65 @@ body {
     border-top: none;
     padding-top: 0;
     margin-top: 0;
+}
+
+.visual-evidence-card {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    padding: 14px;
+    background: rgba(7, 10, 22, 0.65);
+    display: grid;
+    gap: 8px;
+}
+
+.visual-evidence-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.visual-evidence-card__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+}
+
+.visual-evidence-card__meta {
+    margin: 0;
+    font-size: 0.85rem;
+    color: rgba(205, 212, 255, 0.75);
+}
+
+.visual-evidence-card__description {
+    margin: 0;
+    font-size: 0.92rem;
+    color: rgba(222, 226, 255, 0.88);
+}
+
+.visual-evidence-card__content {
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 12px;
+    overflow-x: auto;
+}
+
+.visual-evidence-card__content > * {
+    max-width: 100%;
+}
+
+.visual-evidence-card__prompt {
+    font-size: 0.88rem;
+    color: rgba(210, 214, 252, 0.85);
+    white-space: pre-wrap;
+}
+
+.visual-evidence-share-btn {
+    margin-left: auto;
+    font-size: 0.78rem;
+    text-transform: none;
 }
 
 .clue-list {

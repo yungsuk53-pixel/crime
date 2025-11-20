@@ -965,6 +965,8 @@ export const SCENARIO_GENERATION_GUIDE = String.raw`
 ## 🖼 Nanobanana 그래픽 의뢰 지침
 
 - 각 시각적 증거의 \`imagePrompt\`는 **Nanobanana**에 전달할 세부 묘사 전용으로 작성합니다.
+- **각 visualEvidence마다 장면 설계표를 작성**하고 \`imagePrompt\` 안에 아래 6요소를 한 문단으로 모두 포함하세요: (1) ShotType & Camera(예: "ShotType: macro top-down, 50mm lens"), (2) SubjectFocus(몸짓·흔적·도구 등 핵심 단서), (3) KeyObjects & PhysicalTrace(최소 3개의 오브젝트/흔적), (4) Environment & SpatialClues(배경 구조, 주변 배치), (5) Lighting & Mood(조명 색감, 대비, 날씨), (6) TextBan 문장("Text-free artwork. Leave every signage blank for HTML overlay."). 마지막에는 "Use ultra realistic materials, 4K render" 같은 품질 지시를 덧붙여 장면이 모호하지 않게 합니다.
+- **clue_a / clue_b / clue_c 단계별로 무엇을 그릴지 명시**: "clue_b 탐정#1 Nanobanana는 젖은 옥상 난간에서 발견된 구두 자국과 찢어진 자켓 섬유를 극근접으로 보여준다"처럼, 어떤 물증을 어떤 구도로 포착할지 서술해야 합니다. 역할군별 최소 수량을 채우면서, 각 장면이 사건의 다른 단서를 설명하도록 분산하세요.
 - 실제 그래픽은 Nanobanana로 생성한 뒤 개별 이미지 파일(PNG/JPG 등)로 업로드하며, JSON에는 경로나 참조만 남깁니다.
 - HTML 블록에는 레이아웃과 복기용 텍스트만 포함하고, 실물 이미지는 Nanobanana 출력물을 삽입해 사용합니다.
 - 같은 자산을 재사용할 경우에도 \`imagePrompt\`를 명시하여 Nanobanana에 동일한 결과를 재요청할 수 있도록 합니다.
@@ -977,6 +979,12 @@ export const SCENARIO_GENERATION_GUIDE = String.raw`
 - **무단 텍스트 금지**: 요청서에 없는 영어/숫자/기호를 그리면 작업 전체를 폐기한다는 경고를 명시해 임의 텍스트 삽입을 차단하세요.
 - **빈칸 위치 안내**: 각 \`imagePrompt\` 안에 오버레이가 들어갈 정확한 위치(예: "상단 20%", "하단 플레이트")를 서술하고, 해당 영역은 완전히 비워 두라고 강조하세요.
 - **UTF-8 방지 문구 유지**: 한글 증거가 HTML에 포함될 때는 "All text must remain in UTF-8 Hangul." 같은 인코딩 지침을 첨부하여 글자 깨짐을 막습니다.
+
+### Nanobanana 장면 명세 예시
+
+```
+imagePrompt: "ShotType: over-the-shoulder medium shot from shoulder height, 35mm lens. SubjectFocus: drummer's cracked stick pointing at the fresh blood-specked cymbal dent. KeyObjects & PhysicalTrace: rain-soaked rooftop tiles, fallen setlist page with smudged ink, smeared handprint on the safety railing. Environment & SpatialClues: neon skyline bokeh, puddles reflecting amber corridor light, emergency exit door ajar with yellow hazard stripe. Lighting & Mood: cold midnight drizzle with cyan rim light from stage LEDs, high contrast cinematic noir. Text-free artwork. Leave every signage blank for HTML overlay. Use ultra realistic materials, 4K render."
+```
 
 ### HTML 스타일링 절대 규칙:
 1. **반드시 인라인 스타일 사용** - style 속성에 모든 CSS 포함
