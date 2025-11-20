@@ -971,6 +971,8 @@ export const SCENARIO_GENERATION_GUIDE = `
 - **중요**: 한글 텍스트가 포함된 이미지는 반드시 \`All text must remain in UTF-8 Hangul.\` 과 같이 UTF-8 유지 문구를 프롬프트에 추가하고, 필요한 한글 표기를 그대로 기재해 주세요.
 - **텍스트 오버레이 전략**: Nanobanana에는 텍스트가 비어 있는 배경/아트워크만 요청하고, 최종 한글 문구는 HTML/CSS로 덮어씌웁니다. 따라서 프롬프트에는 “No embedded text. Leave blank banner space for Hangul overlay.” 와 같이 반드시 **텍스트 없음**을 명시하세요.
 - **추가 금지 문구**: 모든 \`imagePrompt\` 끝에 \`Text-free artwork only. Leave blank signage for Hangul overlay. Do not draw ANY Korean or English text.\` 라는 문장을 덧붙여 생성기가 임의로 글자를 넣지 못하게 하세요.
+- **무단 텍스트 금지**: 요청서에 없는 한글/영문/숫자/기호를 그리면 작업 전체를 폐기해야 한다는 경고를 반드시 명시해 모델이 임의 텍스트를 삽입하지 못하도록 하세요.
+- **빈칸 위치 안내**: 각 \`imagePrompt\` 안에 Hangul overlay가 들어갈 정확한 위치(예: "상단 20% 영역", "중앙 카드")를 서술하고, 해당 영역은 완전히 비워 두라고 강조하세요.
 
 ### HTML 스타일링 절대 규칙:
 1. **반드시 인라인 스타일 사용** - style 속성에 모든 CSS 포함

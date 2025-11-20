@@ -61,6 +61,26 @@ function ensureArray(value) {
 
 const VISUAL_STAGE_KEYS = ["clue_a", "clue_b", "clue_c"];
 
+const BLANK_ZONE_HINTS = {
+  clue_a: "Place the blank banner across the upper 20% of the canvas so Hangul text can sit above the scene.",
+  clue_b: "Reserve an empty plaque along the lower third, wide enough for two lines of Hangul text.",
+  clue_c: "Keep a centered blank rectangle (no texture) for the climactic evidence caption.",
+  global: "Add a neutral blank card near the foreground for overlaying shared labels.",
+  default: "Keep at least one obvious blank signage area with soft edges so HTML text can be overlaid later."
+};
+
+function describeBlankOverlayZone(slot) {
+  const base = "Leave a perfectly blank, texture-free banner with crisp edges and no symbols.";
+  if (!slot) {
+    return `${base} Keep it centered in the composition.`;
+  }
+  if (slot.htmlText) {
+    return `${base} Mirror the empty container indicated in the HTML reference snippet so the overlay fits precisely.`;
+  }
+  const hint = BLANK_ZONE_HINTS[slot.stage] || BLANK_ZONE_HINTS.default;
+  return `${base} ${hint}`;
+}
+
 function normaliseVisualEvidenceCollection(source) {
   const normaliseItem = (item = {}) => ({
     type: item?.type || "document",
@@ -346,9 +366,9 @@ function buildNanobananaPromptPayload(scenario) {
   const slots = collectVisualEvidenceSlots(scenario);
   const summary = scenario?.summary || "";
   const strictTextFreeRules = [
-    "No embedded text or typography in the artwork.",
+    "Absolutely no embedded text, glyphs, numbers, Korean, English, or symbols anywhere in the artwork.",
     "Leave clean blank signage/banner areas for later Hangul HTML overlays.",
-    "Reserve all Korean labels for HTML only; keep the image itself free of characters."
+    "Reserve all Korean labels for HTML only; keep the image itself 100% character-free even if the prompt lists Hangul."
   ].join(" ");
   const header =
     `Nanobanana에게 아래 사건의 시각 자산을 제작해 주세요.\n` +
@@ -376,11 +396,13 @@ function buildNanobananaPromptPayload(scenario) {
             : "";
       const basePrompt = slot.prompt || slot.description || slot.htmlText || "비어 있음";
       const enforcedPrompt = `${basePrompt} (${strictTextFreeRules})`;
+      const blankZoneHint = describeBlankOverlayZone(slot);
       const lines = [
         `${index + 1}. ${slot.context}${stageLabel ? ` · ${stageLabel}` : ""} - ${slot.title}`,
         `   - 씬 설명: ${slot.description || slot.htmlText || "상세 설명 없음"}`,
         `   - Nanobanana 프롬프트: ${enforcedPrompt}`,
-        `   - 텍스트 금지 규칙: ${strictTextFreeRules}`
+        `   - 텍스트 금지 규칙: ${strictTextFreeRules}`,
+        `   - 빈칸 영역 지시: ${blankZoneHint}`
       ];
       if (slot.htmlText) {
         lines.push(`   - HTML 레이아웃 참고: ${slot.htmlText}`);
