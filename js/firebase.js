@@ -18,13 +18,54 @@ function shouldEnableFirebase() {
 const FIREBASE_APP_URL = "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 const DATABASE_URL = "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 const STORAGE_URL = "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+const FIRESTORE_URL = "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 let firebaseModulePromise = null;
 let firebaseStorageModulePromise = null;
+let firebaseFirestoreModulePromise = null;
 let firebaseAppInstance = null;
 let databaseInstance = null;
 let storageInstance = null;
+let firestoreInstance = null;
 let firebaseEnabled = shouldEnableFirebase();
+
+function bufferToBase64(buffer) {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, chunk);
+  }
+  return btoa(binary);
+}
+
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      reject(new Error("FILE_REQUIRED"));
+      return;
+    }
+    if (typeof FileReader !== "undefined") {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error || new Error("FILE_READ_FAILED"));
+      reader.readAsDataURL(file);
+      return;
+    }
+    if (typeof file.arrayBuffer === "function") {
+      file.arrayBuffer()
+        .then((buffer) => {
+          const base64 = bufferToBase64(buffer);
+          const dataUrl = `data:${file.type || "application/octet-stream"};base64,${base64}`;
+          resolve(dataUrl);
+        })
+        .catch((error) => reject(error));
+      return;
+    }
+    reject(new Error("FILE_READER_UNAVAILABLE"));
+  });
+}
 
 async function loadFirebaseModules() {
   if (!firebaseEnabled) {
@@ -118,6 +159,46 @@ async function ensureStorage() {
   return storageInstance;
 }
 
+async function loadFirebaseFirestoreModule() {
+  if (!firebaseEnabled) {
+    return null;
+  }
+  if (!firebaseFirestoreModulePromise) {
+    firebaseFirestoreModulePromise = (async () => {
+      try {
+        const firestoreModule = await import(FIRESTORE_URL);
+        return {
+          getFirestore: firestoreModule.getFirestore,
+          collection: firestoreModule.collection,
+          doc: firestoreModule.doc,
+          setDoc: firestoreModule.setDoc,
+          serverTimestamp: firestoreModule.serverTimestamp
+        };
+      } catch (error) {
+        console.warn("Firebase Firestore 모듈 로딩 실패", error);
+        return null;
+      }
+    })();
+  }
+  return firebaseFirestoreModulePromise;
+}
+
+async function ensureFirestore() {
+  const libs = await loadFirebaseFirestoreModule();
+  if (!libs) return null;
+  if (firestoreInstance) {
+    return firestoreInstance;
+  }
+  if (!firebaseAppInstance) {
+    const appLibs = await loadFirebaseModules();
+    if (!appLibs) return null;
+    const { getApps, getApp, initializeApp } = appLibs;
+    firebaseAppInstance = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  }
+  firestoreInstance = libs.getFirestore(firebaseAppInstance);
+  return firestoreInstance;
+}
+
 export async function fetchRemoteScenarios() {
   if (!firebaseEnabled) {
     return [];
@@ -174,12 +255,12 @@ export async function uploadGraphicsAssets(files = [], scenarioId) {
   if (!Array.isArray(files) || files.length === 0) {
     throw new Error("GRAPHICS_FILES_REQUIRED");
   }
-  const libs = await loadFirebaseStorageModule();
-  if (!libs) {
+  const firestoreLibs = await loadFirebaseFirestoreModule();
+  if (!firestoreLibs) {
     throw new Error("FIREBASE_UNAVAILABLE");
   }
-  const storage = await ensureStorage();
-  if (!storage) {
+  const firestore = await ensureFirestore();
+  if (!firestore) {
     throw new Error("FIREBASE_UNAVAILABLE");
   }
 
@@ -187,17 +268,27 @@ export async function uploadGraphicsAssets(files = [], scenarioId) {
   for (const file of files) {
     if (!file) continue;
     const safeName = (file.name || "graphics-asset").replace(/\s+/g, "-");
-    const path = `graphicsAssets/${scenarioId}/${Date.now()}-${safeName}`;
+    const path = `graphicsEvidence/${scenarioId}/${Date.now()}-${safeName}`;
     try {
-      const assetRef = libs.ref(storage, path);
-      const snapshot = await libs.uploadBytes(assetRef, file);
-      const url = await libs.getDownloadURL(assetRef);
-      uploads.push({
-        url,
+      const dataUrl = await readFileAsDataURL(file);
+      const scenarioCollection = firestoreLibs.collection(firestore, "graphicsEvidence", scenarioId, "items");
+      const assetDocRef = firestoreLibs.doc(scenarioCollection, path.split("/").pop());
+      await firestoreLibs.setDoc(assetDocRef, {
+        scenarioId,
+        fileName: safeName,
+        bytes: file.size ?? 0,
+        contentType: file.type || "application/octet-stream",
+        dataUrl,
         path,
+        uploadedAt: firestoreLibs.serverTimestamp()
+      });
+      uploads.push({
+        url: dataUrl,
+        path,
+        firestorePath: assetDocRef.path,
         originalName: file.name || safeName,
-        bytes: snapshot?.metadata?.size ?? file.size ?? 0,
-        contentType: snapshot?.metadata?.contentType ?? file.type ?? "application/octet-stream",
+        bytes: file.size ?? 0,
+        contentType: file.type ?? "application/octet-stream",
         uploadedAt: new Date().toISOString()
       });
     } catch (error) {

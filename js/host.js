@@ -138,11 +138,12 @@ const state = {
   hostPlayerPin: "",
   hostPlayer: null,
   activeView: "setup",
-  activeTab: "progress",
+  activeTab: "lobby",
   chatInterval: null,
   playerInterval: null,
   sessionInterval: null,
   stageTimerInterval: null,
+  hostCountdownInterval: null,
   stageAutoAdvancing: false,
   chatSessionCode: null,
   chatIdentity: null,
@@ -343,7 +344,9 @@ const dom = {
   investigationPrompts: document.getElementById("investigationPrompts"),
   suspectRoster: document.getElementById("suspectRoster"),
   stageTracker: document.getElementById("stageTracker"),
-  gameStageTracker: document.querySelector("[data-tab='progress'] .stage-tracker"),
+  hostSessionMeta: document.getElementById("hostSessionMeta"),
+  hostLobbyStatus: document.getElementById("hostLobbyStatus"),
+  hostPlayerRoster: document.getElementById("hostPlayerRoster"),
   stageSelect: document.getElementById("stageSelect"),
   stageUpdateBtn: document.getElementById("updateStageBtn"),
   startGameBtn: document.getElementById("startGameBtn"),
@@ -354,7 +357,6 @@ const dom = {
   stageTimerDisplay: document.getElementById("stageTimerDisplay"),
   voteStatus: document.getElementById("voteStatus"),
   resultBanner: document.getElementById("resultBanner"),
-  gameReadyStatus: document.getElementById("gameReadyStatus"),
   createSessionForm: document.getElementById("createSessionForm"),
   sessionResult: document.getElementById("sessionResult"),
   hostResumeSection: document.getElementById("hostResumeSection"),
@@ -368,16 +370,12 @@ const dom = {
   playerStats: document.getElementById("playerStats"),
   copyPlayerLink: document.getElementById("copyPlayerLink"),
   chatStatus: document.getElementById("chatStatus"),
-  chatMeta: document.getElementById("chatMeta"),
   chatLog: document.getElementById("chatLog"),
   chatForm: document.getElementById("chatForm"),
   chatMessage: document.getElementById("chatMessage"),
   chatSendBtn: document.querySelector("#chatForm button[type='submit']"),
   gameSessionStatus: document.getElementById("gameSessionStatus"),
-  progressStageBadge: document.getElementById("progressStageBadge"),
-  gameStageTimer: document.getElementById("gameStageTimer"),
-  gameMeta: document.getElementById("gameMeta"),
-  gamePlayerStatus: document.getElementById("gamePlayerStatus"),
+  hostStageBadge: document.getElementById("hostStageBadge"),
   hostRoleView: document.getElementById("hostRoleView"),
   gameScenarioTitle: document.getElementById("gameScenarioTitle"),
   gameScenarioTagline: document.getElementById("gameScenarioTagline"),
@@ -390,7 +388,6 @@ const dom = {
   hostProfileNotice: document.getElementById("hostProfileNotice"),
   hostProfileTimeline: document.getElementById("hostProfileTimeline"),
   hostProfileEvidence: document.getElementById("hostProfileEvidence"),
-  hostProfileAlibis: document.getElementById("hostProfileAlibis"),
   hostReadyToolbar: document.getElementById("hostReadyToolbar"),
   hostReadyStatus: document.getElementById("hostReadyStatus"),
   hostReadyToggleBtn: document.getElementById("hostReadyToggleBtn"),
@@ -729,6 +726,66 @@ function renderCharacters(characters = []) {
   });
 }
 
+function renderHostRoster(players = []) {
+  if (!dom.hostPlayerRoster) return;
+  const container = dom.hostPlayerRoster;
+  container.innerHTML = "";
+
+  if (!players.length) {
+    const placeholder = document.createElement("p");
+    placeholder.className = "placeholder";
+    placeholder.textContent = "아직 참가자가 없습니다.";
+    container.appendChild(placeholder);
+    return;
+  }
+
+  const list = document.createElement("ul");
+  list.className = "player-list";
+
+  players
+    .slice()
+    .sort((a, b) => {
+      if (a.is_host && !b.is_host) return -1;
+      if (!a.is_host && b.is_host) return 1;
+      if (a.is_bot !== b.is_bot) return Number(a.is_bot) - Number(b.is_bot);
+      return a.name.localeCompare(b.name, "ko-KR");
+    })
+    .forEach((player) => {
+      const item = document.createElement("li");
+      item.className = "player-list__item";
+      if (player.is_host) {
+        item.classList.add("player-list__item--host");
+      }
+      if (player.is_bot) {
+        item.classList.add("player-list__item--bot");
+      }
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "player-list__name";
+      if (player.character && !player.is_host && !player.is_bot) {
+        nameSpan.textContent = `${player.name} (${player.character})`;
+      } else {
+        nameSpan.textContent = player.name;
+      }
+
+      const roleSpan = document.createElement("span");
+      roleSpan.className = "player-list__role";
+      roleSpan.textContent = player.is_host ? "호스트" : player.is_bot ? "봇" : "참가자";
+
+      item.append(nameSpan, roleSpan);
+      list.appendChild(item);
+    });
+
+  container.appendChild(list);
+}
+
+function updateHostStageBadge(stageKey) {
+  if (!dom.hostStageBadge) return;
+  const label = safeGetStageLabel(stageKey) || "대기 중";
+  dom.hostStageBadge.textContent = label;
+  dom.hostStageBadge.dataset.stage = stageKey || "";
+}
+
 function setView(viewKey) {
   if (!["setup", "lobby", "game"].includes(viewKey)) return;
   if (state.activeView === viewKey) return;
@@ -747,8 +804,7 @@ function setView(viewKey) {
   }
   state.activeView = viewKey;
   if (viewKey === "game") {
-    cloneStageTracker();
-    switchTab(state.activeTab || "progress");
+    switchTab(state.activeTab || "lobby");
   }
 }
 
@@ -757,17 +813,14 @@ function switchTab(tabKey) {
   dom.tabButtons.forEach((button) => {
     const isActive = button.dataset.tab === tabKey;
     button.classList.toggle("tab-nav__btn--active", isActive);
+    button.setAttribute("aria-selected", isActive ? "true" : "false");
+    button.setAttribute("tabindex", isActive ? "0" : "-1");
   });
   dom.tabPanels.forEach((panel) => {
     const isActive = panel.dataset.tab === tabKey;
     panel.classList.toggle("tab-panel--active", isActive);
+    panel.setAttribute("aria-hidden", isActive ? "false" : "true");
   });
-}
-
-function cloneStageTracker() {
-  if (!dom.stageTracker || !dom.gameStageTracker) return;
-  dom.gameStageTracker.innerHTML = dom.stageTracker.innerHTML;
-  updateStageTracker(state.activeSession?.stage || "lobby");
 }
 
 function ensureViewForStage(stageKey) {
@@ -779,44 +832,46 @@ function ensureViewForStage(stageKey) {
   }
 }
 
+function formatCountdown(diffMs) {
+  const totalSeconds = Math.max(0, Math.floor(diffMs / 1000));
+  const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+  const seconds = String(totalSeconds % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
+}
+
 function formatCountdownText(diffMs) {
   if (diffMs <= 0) {
     return "전환 준비 중";
   }
-  const totalSeconds = Math.max(0, Math.floor(diffMs / 1000));
-  const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
-  const seconds = String(totalSeconds % 60).padStart(2, "0");
-  return `${minutes}:${seconds} 남음`;
+  return `${formatCountdown(diffMs)} 남음`;
 }
 
 function updateStageTimerDisplay() {
-  const wrappers = [dom.stageTimerDisplay, dom.gameStageTimer];
-  wrappers.forEach((wrapper) => {
-    if (!wrapper) return;
-    const labelEl = wrapper.querySelector(".stage-timer__label");
-    const timeEl = wrapper.querySelector(".stage-timer__time");
+  const wrapper = dom.stageTimerDisplay;
+  if (!wrapper) return;
+  const labelEl = wrapper.querySelector(".stage-timer__label");
+  const timeEl = wrapper.querySelector(".stage-timer__time");
 
-    if (!state.activeSession) {
-      if (labelEl) labelEl.textContent = "자동 진행";
-      if (timeEl) timeEl.textContent = "대기 중";
-      return;
-    }
+  if (!state.activeSession) {
+    if (labelEl) labelEl.textContent = "자동 진행";
+    if (timeEl) timeEl.textContent = "대기 중";
+    return;
+  }
 
-    const { stage, stage_deadline_at, auto_stage_enabled } = state.activeSession;
-    if (labelEl) {
-      labelEl.textContent = `자동 진행 · ${safeGetStageLabel(stage)}`;
-    }
+  const { stage, stage_deadline_at, auto_stage_enabled } = state.activeSession;
+  if (labelEl) {
+    labelEl.textContent = `자동 진행 · ${safeGetStageLabel(stage)}`;
+  }
 
-    if (!auto_stage_enabled || getStageDurationMs(stage) === 0 || !stage_deadline_at) {
-      if (timeEl) timeEl.textContent = "수동 제어";
-      return;
-    }
+  if (!auto_stage_enabled || getStageDurationMs(stage) === 0 || !stage_deadline_at) {
+    if (timeEl) timeEl.textContent = "수동 제어";
+    return;
+  }
 
-    const diff = new Date(stage_deadline_at).getTime() - Date.now();
-    if (timeEl) {
-      timeEl.textContent = formatCountdownText(diff);
-    }
-  });
+  const diff = new Date(stage_deadline_at).getTime() - Date.now();
+  if (timeEl) {
+    timeEl.textContent = formatCountdownText(diff);
+  }
 }
 
 function startStageTimerLoop() {
@@ -1075,13 +1130,10 @@ function updateStageTracker(stageKey) {
     });
   };
   toggleItems(dom.stageTracker);
-  toggleItems(dom.gameStageTracker);
   if (dom.stageSelect && dom.stageSelect.value !== stageKey) {
     dom.stageSelect.value = stageKey;
   }
-  if (dom.progressStageBadge) {
-    dom.progressStageBadge.textContent = safeGetStageLabel(stageKey);
-  }
+  updateHostStageBadge(stageKey);
 }
 
 function setSessionResult(content) {
@@ -1125,53 +1177,133 @@ function formatStatusText(status) {
   }
 }
 
+function buildStageHint(session) {
+  switch (session?.stage) {
+    case "lobby":
+      return "호스트가 최소 인원을 확보하면 게임이 시작됩니다.";
+    case "briefing":
+      return "역할 브리핑을 확인하고 핵심 갈등을 정리하세요.";
+    case "clue_a":
+      return "첫 번째 단서가 공개되었습니다. 중요한 사실을 팀과 공유하세요.";
+    case "discussion_a":
+      return "1차 토론입니다. 단서를 근거로 서로의 진술을 검증해 보세요.";
+    case "clue_b":
+      return "두 번째 단서가 열렸습니다. 새 정보와 모순점을 찾아보세요.";
+    case "discussion_b":
+      return "2차 토론입니다. 용의자 범위를 좁히고 가설을 정리하세요.";
+    case "clue_c":
+      return "세 번째 단서가 공개되었습니다. 결정적인 증거를 확보하세요.";
+    case "final_discussion":
+      return "최종 토론 단계입니다. 최종 결론을 정리하고 투표를 준비하세요.";
+    case "voting":
+      return "범인이라고 생각하는 인물을 선택해 투표하세요.";
+    case "result":
+      return "결과가 발표되었습니다. 승패와 득표를 확인하세요.";
+    case "closed":
+      return "세션이 종료되었습니다.";
+    default:
+      return "진행 상황을 주시하세요.";
+  }
+}
+
+function renderHostSessionMeta(session, scenario) {
+  if (!dom.hostSessionMeta) return;
+  if (!session) {
+    dom.hostSessionMeta.innerHTML = "";
+    return;
+  }
+  const rangeText = scenario?.playerRange ? formatPlayerRange(scenario.playerRange) : "-";
+  const stageLabel = safeGetStageLabel(session.stage);
+  const statusText = formatStatusText(session.status);
+  let autoMeta = "수동 진행";
+  if (session.auto_stage_enabled && session.stage_deadline_at) {
+    const diff = new Date(session.stage_deadline_at).getTime() - Date.now();
+    autoMeta = diff > 0 ? `${formatCountdown(diff)} 남음` : "전환 준비 중";
+  } else if (session.stage === "lobby") {
+    autoMeta = "호스트 대기";
+  }
+  dom.hostSessionMeta.innerHTML = `
+    <div><strong>세션 코드</strong> · ${session.code || "-"}</div>
+    <div><strong>현재 단계</strong> · ${stageLabel}</div>
+    <div><strong>세션 상태</strong> · ${statusText}</div>
+    <div><strong>자동 진행</strong> · ${autoMeta}</div>
+    <div><strong>필요 인원</strong> · ${rangeText}</div>
+    <div><strong>선택 사건</strong> · ${scenario?.title || "-"}</div>
+  `;
+}
+
+function updateHostCountdown(deadlineIso) {
+  clearInterval(state.hostCountdownInterval);
+  const row = document.getElementById("hostCountdownRow");
+  const valueEl = document.getElementById("hostCountdownValue");
+  if (!row || !valueEl) return;
+  if (!deadlineIso) {
+    row.style.display = "none";
+    return;
+  }
+  row.style.display = "flex";
+  const tick = () => {
+    const diff = new Date(deadlineIso).getTime() - Date.now();
+    if (diff <= 0) {
+      valueEl.textContent = "전환 준비 중";
+      clearInterval(state.hostCountdownInterval);
+      return;
+    }
+    valueEl.textContent = `${formatCountdown(diff)} 남음`;
+  };
+  tick();
+  state.hostCountdownInterval = setInterval(tick, 1000);
+}
+
+function renderHostLobbyStatus(session, hostPlayer) {
+  if (!dom.hostLobbyStatus) return;
+  if (!session) {
+    dom.hostLobbyStatus.innerHTML = '<p class="placeholder">세션에 접속하면 현재 진행 상황이 표시됩니다.</p>';
+    updateHostCountdown(null);
+    return;
+  }
+  const stageLabel = safeGetStageLabel(session.stage) || session.stage || "-";
+  const statusText = formatStatusText(session.status);
+  const roleText = hostPlayer?.role || "미배정";
+  const deadline = session.stage_deadline_at;
+  const autoEnabled = session.auto_stage_enabled;
+
+  dom.hostLobbyStatus.innerHTML = `
+    <div class="lobby-status__row"><span class="lobby-status__label">세션</span><span class="lobby-status__value">${session.code || "-"}</span></div>
+    <div class="lobby-status__row"><span class="lobby-status__label">현재 단계</span><span class="lobby-status__value">${stageLabel}</span></div>
+    <div class="lobby-status__row"><span class="lobby-status__label">세션 상태</span><span class="lobby-status__value">${statusText}</span></div>
+    <div class="lobby-status__row" id="hostCountdownRow" style="${deadline && autoEnabled ? "" : "display:none"}">
+      <span class="lobby-status__label">잔여 시간</span>
+      <span class="lobby-status__value" id="hostCountdownValue">${deadline && autoEnabled ? "--:--" : "수동 진행"}</span>
+    </div>
+    <div class="lobby-status__row"><span class="lobby-status__label">내 역할</span><span class="lobby-status__value">${roleText}</span></div>
+    <p class="lobby-status__hint">${buildStageHint(session)}</p>
+  `;
+
+  if (deadline && autoEnabled) {
+    updateHostCountdown(deadline);
+  } else {
+    updateHostCountdown(null);
+  }
+}
+
 function updateSessionMeta() {
   if (!state.activeSession) {
-    if (dom.chatMeta) dom.chatMeta.innerHTML = "";
+    renderHostSessionMeta(null, null);
+    renderHostLobbyStatus(null, null);
+    renderHostRoster([]);
     if (dom.sessionStatusBadge) dom.sessionStatusBadge.textContent = "대기실";
-    if (dom.gameMeta) dom.gameMeta.innerHTML = "";
     if (dom.gameSessionStatus) dom.gameSessionStatus.textContent = "-";
-    if (dom.progressStageBadge) dom.progressStageBadge.textContent = "-";
+    updateHostStageBadge("lobby");
     ensureViewForStage("lobby");
+    updateStageTracker("lobby");
     updateStageTimerDisplay();
     return;
   }
-  const {
-    code,
-    stage,
-    scenario_id,
-    host_name,
-    player_count,
-    status,
-    winning_side,
-    stage_deadline_at,
-    auto_stage_enabled
-  } = state.activeSession;
-  const scenario = getScenarioById(scenario_id);
-  const diff = stage_deadline_at ? new Date(stage_deadline_at).getTime() - Date.now() : null;
-  const autoMeta = auto_stage_enabled && stage_deadline_at ? formatCountdownText(diff) : "수동 제어";
-  if (dom.chatMeta) {
-    dom.chatMeta.innerHTML = `
-      <div><strong>세션 코드</strong><br>${code || "-"}</div>
-      <div><strong>현재 단계</strong><br>${safeGetStageLabel(stage)}</div>
-      <div><strong>세션 상태</strong><br>${formatStatusText(status)}</div>
-      <div><strong>자동 진행</strong><br>${autoMeta}</div>
-      <div><strong>선택 사건</strong><br>${scenario?.title || "-"}</div>
-      <div><strong>호스트</strong><br>${host_name || "-"}</div>
-      <div><strong>등록 플레이어</strong><br>${player_count ?? state.players.length}</div>
-      ${winning_side ? `<div><strong>승리</strong><br>${winning_side === "citizens" ? "시민" : "범인"}</div>` : ""}
-    `;
-  }
-  if (dom.gameMeta) {
-    dom.gameMeta.innerHTML = `
-      <div><strong>세션</strong> · ${code || "-"}</div>
-      <div><strong>현재 단계</strong> · ${safeGetStageLabel(stage)}</div>
-      <div><strong>상태</strong> · ${formatStatusText(status)}</div>
-      <div><strong>자동 진행</strong> · ${autoMeta}</div>
-      <div><strong>참가자</strong> · ${player_count ?? state.players.length}명</div>
-      <div><strong>호스트</strong> · ${host_name || "-"}</div>
-    `;
-  }
+  const { stage, scenario_id, status } = state.activeSession;
+  const scenario = getScenarioById(scenario_id) || state.activeScenario;
+  renderHostSessionMeta(state.activeSession, scenario);
+  renderHostLobbyStatus(state.activeSession, state.hostPlayer);
   if (dom.sessionStatusBadge) {
     dom.sessionStatusBadge.textContent = formatStatusText(status);
   }
@@ -1214,7 +1346,12 @@ function updateResultBanner() {
 }
 
 function updateHostGameStatusBar() {
-  if (!state.activeSession || !dom.hostGameStatusBar) return;
+  if (!dom.hostGameStatusBar) return;
+  if (!state.activeSession) {
+    if (dom.hostStatusBarStage) dom.hostStatusBarStage.textContent = "-";
+    if (dom.hostStatusBarTimer) dom.hostStatusBarTimer.textContent = "--:--";
+    return;
+  }
 
   const stage = state.activeSession.stage || "lobby";
   const stageLabel = safeGetStageLabel(stage);
@@ -1223,7 +1360,6 @@ function updateHostGameStatusBar() {
     dom.hostStatusBarStage.textContent = stageLabel;
   }
 
-  // 타이머 계산
   if (dom.hostStatusBarTimer) {
     const { stage_deadline_at, auto_stage_enabled } = state.activeSession;
     if (auto_stage_enabled && stage_deadline_at) {
@@ -1237,10 +1373,7 @@ function updateHostGameStatusBar() {
     }
   }
 
-  // 상태 바 항상 표시
-  if (dom.hostGameStatusBar) {
-    dom.hostGameStatusBar.style.display = 'flex';
-  }
+  dom.hostGameStatusBar.style.display = 'flex';
 }
 
 function updateControlStates() {
@@ -2176,8 +2309,8 @@ async function loadPlayers() {
     renderHostCharacterList();
     updateSessionResultDisplay();
     renderPlayers(players);
-    renderGamePlayerStatus(players);
-    renderReadyAggregates(players);
+    renderHostRoster(players);
+    renderHostLobbyStatus(state.activeSession, state.hostPlayer);
     await checkAndHandleStageReadyAdvance();
     updatePlayerStats();
     updateVoteStatus();
@@ -2722,75 +2855,6 @@ function renderHostRoleView(player) {
   renderHostPersonalProfile(profile);
 }
 
-function renderGamePlayerStatus(players = []) {
-  if (!dom.gamePlayerStatus) return;
-  if (!players.length) {
-    dom.gamePlayerStatus.innerHTML = "<p class=\"placeholder\">플레이어를 기다리는 중입니다.</p>";
-    return;
-  }
-  const rows = players
-    .slice()
-    .sort((a, b) => {
-      if (a.is_host && !b.is_host) return -1;
-      if (!a.is_host && b.is_host) return 1;
-      if (a.is_bot !== b.is_bot) return Number(a.is_bot) - Number(b.is_bot);
-      return a.name.localeCompare(b.name, "ko-KR");
-    })
-    .map((player) => {
-      const tag = player.is_host ? "호스트" : player.is_bot ? "봇" : "플레이어";
-      const statusText = formatPlayerStatus(player);
-      const readyText = formatReadyStatus(player);
-      return `
-        <div class="lobby-status__row">
-          <span class="lobby-status__label">${player.name} · ${tag}</span>
-          <span class="lobby-status__value">${statusText} · ${readyText}</span>
-        </div>
-      `;
-    })
-    .join("");
-  dom.gamePlayerStatus.innerHTML = rows;
-}
-
-function renderReadyAggregates(players = []) {
-  if (!dom.gameReadyStatus) return;
-  if (!state.activeSession) {
-    dom.gameReadyStatus.innerHTML = "";
-    return;
-  }
-  const stage = state.activeSession.stage;
-  if (!isStageReadySkipEligible(stage)) {
-    dom.gameReadyStatus.innerHTML =
-      "<p class=\"placeholder\">이 단계에서는 턴 끝내기 투표를 사용할 수 없습니다.</p>";
-    return;
-  }
-  const eligiblePlayers = players.filter((player) => !player.is_bot).length;
-  if (!eligiblePlayers) {
-    dom.gameReadyStatus.innerHTML = "<p class=\"placeholder\">플레이어를 기다리는 중입니다.</p>";
-    return;
-  }
-  const readyPlayers = players.filter(
-    (player) => !player.is_bot && player.stage_ready && player.ready_stage === stage
-  );
-  const readyNames = readyPlayers.map((player) => player.name).join(", ");
-  const requiredCount = getReadyVoteRequirement(eligiblePlayers);
-  const requirementMet = requiredCount > 0 && readyPlayers.length >= requiredCount;
-  const helperTexts = [];
-  if (requiredCount > 0) {
-    helperTexts.push(
-      requirementMet
-        ? "필요 투표 수가 충족되어 전환을 준비합니다."
-        : `다음 단계로 이동하려면 최소 ${requiredCount}명이 동의해야 합니다.`
-    );
-  }
-  if (readyNames) {
-    helperTexts.push(`동의한 플레이어: ${readyNames}`);
-  }
-  dom.gameReadyStatus.innerHTML = `
-    <strong>${safeGetStageLabel(stage)}</strong><br>
-    ${readyPlayers.length} / ${eligiblePlayers} 명이 '턴 끝내기'에 투표했습니다.
-    ${helperTexts.map((text) => `<p class="helper-text">${text}</p>`).join("")}
-  `;
-}
 
 function isStageReadySkipEligible(stageKey) {
   return isReadyVoteStage(stageKey);
@@ -2884,7 +2948,6 @@ async function resetPlayerReadiness(stageKey) {
     player.stage_ready = false;
     player.ready_stage = stageKey;
   });
-  renderReadyAggregates(state.players);
 }
 
 async function checkAndHandleStageReadyAdvance() {
@@ -3277,8 +3340,7 @@ async function initialise() {
   populateScenarioSelect();
   attachEventListeners();
   await refreshHostResumeSessions();
-  cloneStageTracker();
-  switchTab("progress");
+  switchTab("lobby");
   setView("setup");
   toggleChatAvailability(false);
   if (dom.stageUpdateBtn) {

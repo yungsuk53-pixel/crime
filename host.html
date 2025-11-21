@@ -213,27 +213,13 @@
             </section>
 
             <section id="gameView" class="app-view" aria-labelledby="gameTitle">
-                <!-- 상단 상태 바 -->
-                <div class="game-status-bar" id="hostGameStatusBar">
-                    <div class="game-status-bar__item">
-                        <span class="game-status-bar__label">현재 단계:</span>
-                        <span class="game-status-bar__value" id="hostStatusBarStage">-</span>
-                    </div>
-                    <div class="game-status-bar__item">
-                        <span class="game-status-bar__label">남은 시간:</span>
-                        <span class="game-status-bar__value" id="hostStatusBarTimer">-</span>
-                    </div>
-                    <div class="game-status-bar__item">
-                        <span class="badge" id="gameSessionStatus">-</span>
-                    </div>
-                </div>
-
                 <header class="view-header">
                     <div>
-                        <h2 id="gameTitle" class="view-header__title">게임 진행</h2>
-                        <p class="view-header__subtitle">버튼으로 원하는 탭을 전환하며 단서, 채팅을 확인하세요.</p>
+                        <h2 id="gameTitle" class="view-header__title">세션 참여</h2>
+                        <p class="view-header__subtitle">탭을 눌러 대기실 현황, 단서, 채팅, 투표 화면을 전환하세요.</p>
                     </div>
                     <div class="view-header__actions">
+                        <span class="badge" id="hostStageBadge">대기 중</span>
                         <div class="ready-control" id="hostReadyToolbar">
                             <span id="hostReadyStatus" class="badge">투표 대기</span>
                             <button type="button" id="hostReadyToggleBtn" class="btn btn--secondary">턴 끝내기</button>
@@ -241,8 +227,21 @@
                     </div>
                 </header>
 
+                <div class="game-status-bar" id="hostGameStatusBar">
+                    <div class="game-status-bar__label">
+                        <strong>현재 단계:</strong> <span id="hostStatusBarStage">대기실</span>
+                    </div>
+                    <div class="game-status-bar__timer">
+                        <strong>남은 시간:</strong> <span id="hostStatusBarTimer">--:--</span>
+                    </div>
+                    <div class="game-status-bar__badge">
+                        <span class="badge" id="gameSessionStatus">대기 중</span>
+                    </div>
+                </div>
+
                 <div class="tab-nav" role="tablist">
-                    <button class="tab-nav__btn tab-nav__btn--active" data-tab="clues" type="button">내 단서</button>
+                    <button class="tab-nav__btn tab-nav__btn--active" data-tab="lobby" type="button">대기실</button>
+                    <button class="tab-nav__btn" data-tab="clues" type="button">내 단서</button>
                     <button class="tab-nav__btn" data-tab="profile" type="button">내 정보</button>
                     <button class="tab-nav__btn" data-tab="scenario" type="button">사건 정보</button>
                     <button class="tab-nav__btn" data-tab="roles" type="button">캐릭터 목록</button>
@@ -252,10 +251,28 @@
                 </div>
 
                 <div class="tab-panels">
-                    <section class="tab-panel tab-panel--active" data-tab="clues">
+                    <section class="tab-panel tab-panel--active" data-tab="lobby">
+                        <article class="card card--stacked">
+                            <h3 class="card__title">세션 정보</h3>
+                            <div class="session-meta session-meta--grid" id="hostSessionMeta"></div>
+                            <div class="lobby-status" id="hostLobbyStatus">
+                                <p class="placeholder">세션에 접속하면 현재 진행 상황이 표시됩니다.</p>
+                            </div>
+                        </article>
+                        <article class="card">
+                            <h3 class="card__title">참가자 목록</h3>
+                            <div id="hostPlayerRoster" class="player-roster">
+                                <p class="placeholder">플레이어 목록을 불러오는 중...</p>
+                            </div>
+                        </article>
+                    </section>
+
+                    <section class="tab-panel" data-tab="clues">
                         <article class="card card--accent">
-                            <h3 class="card__title">내 역할 & 단서</h3>
-                            <p class="helper-text">게임이 진행되면서 단계별로 증거가 공개됩니다.</p>
+                            <div class="card__header-row">
+                                <h3 class="card__title">내 역할 &amp; 단서</h3>
+                            </div>
+                            <p class="helper-text">화면 상단의 "턴 끝내기" 버튼을 통해 다음 단계로 이동하는 투표에 참여하세요. 언제든 다시 눌러 투표를 취소할 수 있습니다.</p>
                             <div class="role-view" id="hostRoleView">
                                 <p class="placeholder">게임 시작 후 역할과 단서가 표시됩니다.</p>
                             </div>
@@ -303,7 +320,7 @@
                     <section class="tab-panel" data-tab="chat">
                         <article class="card">
                             <h3 class="card__title">실시간 채팅</h3>
-                            <div class="chat-board" id="chatBoard">
+                            <div class="chat-board chat-board--player">
                                 <div class="chat-board__main">
                                     <div class="chat-status" id="chatStatus">세션에 접속하면 채팅이 활성화됩니다.</div>
                                     <div class="chat-log" id="chatLog" aria-live="polite"></div>
@@ -328,6 +345,7 @@
                             </form>
                             <p class="helper-text" id="hostVoteHelper">투표가 시작되면 선택지가 활성화됩니다.</p>
                             <div class="vote-result" id="hostVoteStatus"></div>
+                            <div class="vote-result result-banner" id="resultBanner"></div>
                         </article>
                     </section>
 
