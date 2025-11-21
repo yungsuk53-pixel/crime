@@ -67,6 +67,112 @@ function readFileAsDataURL(file) {
   });
 }
 
+function blobToDataURL(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error("BLOB_READ_FAILED"));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve) => {
+    if (!canvas.toBlob) {
+      resolve(null);
+      return;
+    }
+    canvas.toBlob((blob) => resolve(blob), type, quality);
+  });
+}
+
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("IMAGE_LOAD_FAILED"));
+    readFileAsDataURL(file)
+      .then((dataUrl) => {
+        image.src = dataUrl;
+      })
+      .catch(reject);
+  });
+}
+
+async function compressFileToDataUrl(file, options = {}) {
+  const maxBytes = options.maxBytes ?? 950000;
+  const maxDimension = options.maxDimension ?? 1600;
+  if (!file) {
+    throw new Error("FILE_REQUIRED");
+  }
+  const originalSize = file.size ?? 0;
+  const mimeType = file.type || "application/octet-stream";
+  if (!mimeType.startsWith("image/")) {
+    const dataUrl = await readFileAsDataURL(file);
+    return { dataUrl, contentType: mimeType, bytes: originalSize };
+  }
+  if (originalSize && originalSize <= maxBytes) {
+    const dataUrl = await readFileAsDataURL(file);
+    return { dataUrl, contentType: mimeType, bytes: originalSize };
+  }
+
+  const image = await loadImageFromFile(file);
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    const dataUrl = await readFileAsDataURL(file);
+    return { dataUrl, contentType: mimeType, bytes: originalSize };
+  }
+
+  let targetWidth = image.width;
+  let targetHeight = image.height;
+  const largestSide = Math.max(targetWidth, targetHeight);
+  if (largestSide > maxDimension) {
+    const scale = maxDimension / largestSide;
+    targetWidth = Math.max(1, Math.round(targetWidth * scale));
+    targetHeight = Math.max(1, Math.round(targetHeight * scale));
+  }
+
+  let quality = 0.9;
+  let blob = null;
+  let attempts = 0;
+  const minQuality = 0.35;
+
+  while (attempts < 8) {
+    attempts += 1;
+    canvas.width = Math.max(1, Math.round(targetWidth));
+    canvas.height = Math.max(1, Math.round(targetHeight));
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    blob = await canvasToBlob(canvas, "image/jpeg", quality);
+    if (!blob) {
+      break;
+    }
+    if (blob.size <= maxBytes) {
+      break;
+    }
+    if (quality > minQuality) {
+      quality = Math.max(minQuality, quality - 0.15);
+    } else {
+      targetWidth *= 0.85;
+      targetHeight *= 0.85;
+    }
+  }
+
+  if (!blob) {
+    const fallback = await readFileAsDataURL(file);
+    return { dataUrl: fallback, contentType: mimeType, bytes: originalSize };
+  }
+
+  const dataUrl = await blobToDataURL(blob);
+  return {
+    dataUrl,
+    contentType: "image/jpeg",
+    bytes: blob.size
+  };
+}
+
 async function loadFirebaseModules() {
   if (!firebaseEnabled) {
     return null;
@@ -270,14 +376,15 @@ export async function uploadGraphicsAssets(files = [], scenarioId) {
     const safeName = (file.name || "graphics-asset").replace(/\s+/g, "-");
     const path = `graphicsEvidence/${scenarioId}/${Date.now()}-${safeName}`;
     try {
-      const dataUrl = await readFileAsDataURL(file);
+      const compressed = await compressFileToDataUrl(file);
+      const dataUrl = compressed.dataUrl;
       const scenarioCollection = firestoreLibs.collection(firestore, "graphicsEvidence", scenarioId, "items");
       const assetDocRef = firestoreLibs.doc(scenarioCollection, path.split("/").pop());
       await firestoreLibs.setDoc(assetDocRef, {
         scenarioId,
         fileName: safeName,
-        bytes: file.size ?? 0,
-        contentType: file.type || "application/octet-stream",
+        bytes: compressed.bytes ?? file.size ?? 0,
+        contentType: compressed.contentType || file.type || "application/octet-stream",
         dataUrl,
         path,
         uploadedAt: firestoreLibs.serverTimestamp()
@@ -287,8 +394,8 @@ export async function uploadGraphicsAssets(files = [], scenarioId) {
         path,
         firestorePath: assetDocRef.path,
         originalName: file.name || safeName,
-        bytes: file.size ?? 0,
-        contentType: file.type ?? "application/octet-stream",
+        bytes: compressed.bytes ?? file.size ?? 0,
+        contentType: compressed.contentType ?? file.type ?? "application/octet-stream",
         uploadedAt: new Date().toISOString()
       });
     } catch (error) {
